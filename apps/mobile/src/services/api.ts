@@ -2,7 +2,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RegistrationRecord } from '../types';
 
-export const DEFAULT_SERVER_URL = 'https://uhv-cell-api.onrender.com';
+export const DEFAULT_SERVER_URL = 'https://uhv-cell-api.onrender.com/api/v1';
 
 const STORAGE_KEYS = {
   TOKEN: '@uhv_scanner_token',
@@ -10,17 +10,27 @@ const STORAGE_KEYS = {
   SERVER_URL: '@uhv_scanner_server_url',
 };
 
+export const normalizeServerUrl = (url?: string | null): string => {
+  if (!url) return DEFAULT_SERVER_URL;
+  let clean = url.trim().replace(/\/+$/, '');
+  if (!clean) return DEFAULT_SERVER_URL;
+  if (!clean.endsWith('/api/v1')) {
+    clean = `${clean}/api/v1`;
+  }
+  return clean;
+};
+
 export const getServerUrl = async (): Promise<string> => {
   try {
     const url = await AsyncStorage.getItem(STORAGE_KEYS.SERVER_URL);
-    return url || DEFAULT_SERVER_URL;
+    return normalizeServerUrl(url);
   } catch {
     return DEFAULT_SERVER_URL;
   }
 };
 
 export const setServerUrl = async (url: string): Promise<void> => {
-  const cleanUrl = url.trim().replace(/\/+$/, '');
+  const cleanUrl = normalizeServerUrl(url);
   await AsyncStorage.setItem(STORAGE_KEYS.SERVER_URL, cleanUrl);
 };
 

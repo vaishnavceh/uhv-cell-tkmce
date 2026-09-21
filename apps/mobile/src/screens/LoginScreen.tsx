@@ -11,7 +11,7 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
-import { api, setServerUrl, saveStoredAuth, DEFAULT_SERVER_URL } from '../services/api';
+import { api, setServerUrl, getServerUrl, saveStoredAuth, DEFAULT_SERVER_URL } from '../services/api';
 import { ShieldCheck, Server, Lock, Mail, ChevronRight, Settings } from 'lucide-react-native';
 
 interface LoginScreenProps {
@@ -40,10 +40,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       await setServerUrl(serverUrl);
       const data = await api.login(email, password);
 
-      if (data && data.accessToken) {
+      const token = data?.tokens?.accessToken || data?.accessToken;
+      if (token) {
         const user = data.user || { email };
-        await saveStoredAuth(data.accessToken, user);
-        onLoginSuccess(data.accessToken, user, serverUrl);
+        const finalServerUrl = await getServerUrl();
+        await saveStoredAuth(token, user);
+        onLoginSuccess(token, user, finalServerUrl);
       } else {
         throw new Error('Invalid authentication response from server.');
       }
