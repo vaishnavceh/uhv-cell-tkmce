@@ -22,6 +22,8 @@ import {
   Users,
   Banknote,
   Printer,
+  Copy,
+  X,
 } from 'lucide-react';
 import { TicketPassModal } from '../../components/common/TicketPassModal';
 
@@ -35,6 +37,9 @@ export const TicketScanner: React.FC = () => {
   const [regDetails, setRegDetails] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showPrintModal, setShowPrintModal] = useState(false);
+  const [showSpotUpiModal, setShowSpotUpiModal] = useState(false);
+  const [spotUtr, setSpotUtr] = useState('');
+  const [copiedUpi, setCopiedUpi] = useState(false);
 
   const [scanHistory, setScanHistory] = useState<
     Array<{
@@ -207,9 +212,15 @@ export const TicketScanner: React.FC = () => {
   });
 
   const spotPaymentMutation = useMutation({
-    mutationFn: (id: string) => apiClient.patch(`/events/registrations/${id}/spot-payment`),
-    onSuccess: (data) => {
-      showToast('Spot payment collected & attendee checked in!', 'success');
+    mutationFn: ({ id, paymentMethod, reference }: { id: string; paymentMethod: 'CASH' | 'UPI'; reference?: string }) =>
+      apiClient.patch(`/events/registrations/${id}/spot-payment`, { paymentMethod, reference }),
+    onSuccess: (data, variables) => {
+      showToast(
+        variables.paymentMethod === 'UPI'
+          ? 'Spot UPI payment confirmed & attendee checked in!'
+          : 'Spot cash collected & attendee checked in!',
+        'success'
+      );
       setRegDetails((prev: any) => ({
         ...prev,
         ...data.data,
@@ -218,10 +229,12 @@ export const TicketScanner: React.FC = () => {
       setScanHistory((prev) => {
         const newHistory = [...prev];
         if (newHistory.length > 0) {
-          newHistory[0].status = '💵 spot paid & in';
+          newHistory[0].status = variables.paymentMethod === 'UPI' ? '📱 spot upi & in' : '💵 spot cash & in';
         }
         return newHistory;
       });
+      setShowSpotUpiModal(false);
+      setSpotUtr('');
     },
     onError: () => {
       showToast('Failed to record spot payment', 'error');
@@ -598,17 +611,30 @@ export const TicketScanner: React.FC = () => {
                           <Banknote className="w-4 h-4 text-amber-700" /> Choose Gate Action for Unpaid Pass:
                         </p>
                         
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          {/* Option 1: Collect Spot Payment & Check In */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                          {/* Option 1: Collect Spot Cash & Check In */}
                           <Button
-                            onClick={() => spotPaymentMutation.mutate(regDetails.id)}
+                            onClick={() => {
+                              if (confirm(`Confirm cash collection of ₹${finalDueAmount} from ${regDetails.fullName}?`)) {
+                                spotPaymentMutation.mutate({ id: regDetails.id, paymentMethod: 'CASH' });
+                              }
+                            }}
+                            disabled={spotPaymentMutation.isPending}
+                            className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs py-2.5 shadow-sm flex items-center justify-center gap-1.5"
+                          >
+                            <Banknote className="w-4 h-4" /> Spot Cash ₹{finalDueAmount}
+                          </Button>
+
+                          {/* Option 2: Spot UPI Dynamic QR Code */}
+                          <Button
+                            onClick={() => setShowSpotUpiModal(true)}
                             disabled={spotPaymentMutation.isPending}
                             className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs py-2.5 shadow-sm flex items-center justify-center gap-1.5"
                           >
-                            <Banknote className="w-4 h-4" /> Collect Spot ₹{finalDueAmount} &amp; Check In
+                            <QrCode className="w-4 h-4" /> Spot UPI QR ₹{finalDueAmount}
                           </Button>
 
-                          {/* Option 2: Verify Claimed Ref (if attendee proves UPI screenshot on phone) */}
+                          {/* Option 3: Verify Pre-Claimed Ref (if attendee already transferred before gate) */}
                           <Button
                             onClick={() => {
                               verifyPaymentMutation.mutate(regDetails.id);
@@ -617,12 +643,12 @@ export const TicketScanner: React.FC = () => {
                             disabled={verifyPaymentMutation.isPending || checkInMutation.isPending}
                             className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-2.5 shadow-sm flex items-center justify-center gap-1.5"
                           >
-                            <CheckCircle className="w-4 h-4" /> Verify Proof &amp; Check In
+                            <CheckCircle className="w-4 h-4" /> Verify UTR &amp; In
                           </Button>
                         </div>
                       </div>
 
-                      {/* Option 3: Reject Pass / Deny Entry */}
+                      {/* Option 4: Reject Pass / Deny Entry */}
                       {regDetails.status !== 'REJECTED' && (
                         <Button
                           onClick={() => rejectMutation.mutate(regDetails.id)}
@@ -718,6 +744,113 @@ export const TicketScanner: React.FC = () => {
         registration={regDetails}
         event={regDetails?.event}
       />
+
+      {/* Spot UPI Dynamic QR Modal */}
+      {showSpotUpiModal && regDetails && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-emerald-900/10 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-700">
+                  <QrCode className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Spot UPI Payment</h3>
+                  <p className="text-[11px] text-slate-500">Scan via GPay, PhonePe, Paytm, or BHIM</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowSpotUpiModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {(() => {
+              const ticketFee = Number(regDetails.event?.ticketPrice) || 0;
+              const regAmount = Number(regDetails.totalAmount) || 0;
+              const dueAmount = regAmount > 0 ? regAmount : ticketFee * (regDetails.groupSize || 1);
+              const eventUpiId = regDetails.event?.upiId || 'uhvcell@okaxis';
+              const eventTitle = regDetails.event?.title || 'UHV Cell Event';
+              const upiUri = `upi://pay?pa=${encodeURIComponent(eventUpiId)}&pn=${encodeURIComponent(eventTitle)}&am=${dueAmount}&cu=INR&tn=${encodeURIComponent('Pass ' + (regDetails.id || '').slice(0, 8))}`;
+              const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=8&data=${encodeURIComponent(upiUri)}`;
+
+              return (
+                <div className="space-y-3">
+                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex flex-col items-center">
+                    <img
+                      src={qrUrl}
+                      alt="Spot UPI QR"
+                      className="w-48 h-48 rounded-lg shadow-sm bg-white p-2 border border-slate-200"
+                    />
+                    <div className="mt-2 text-center">
+                      <span className="text-xs text-slate-500 font-medium">Amount to Pay</span>
+                      <p className="text-xl font-extrabold text-emerald-700">₹{dueAmount}</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-emerald-50/70 p-2.5 rounded-lg border border-emerald-100 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="text-[10px] text-emerald-800 font-bold block">EVENT UPI ID</span>
+                      <span className="font-mono font-bold text-emerald-950">{eventUpiId}</span>
+                    </div>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(eventUpiId);
+                        setCopiedUpi(true);
+                        setTimeout(() => setCopiedUpi(false), 2000);
+                      }}
+                      className="text-emerald-700 hover:text-emerald-900 font-semibold flex items-center gap-1 text-[11px]"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      {copiedUpi ? 'Copied!' : 'Copy'}
+                    </button>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-bold text-slate-700 block">
+                      Transaction UTR / Reference No. (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 427819284912"
+                      value={spotUtr}
+                      onChange={(e) => setSpotUtr(e.target.value)}
+                      className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
+                    />
+                  </div>
+
+                  <div className="flex gap-2 pt-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowSpotUpiModal(false)}
+                      className="flex-1 text-xs"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      disabled={spotPaymentMutation.isPending}
+                      onClick={() =>
+                        spotPaymentMutation.mutate({
+                          id: regDetails.id,
+                          paymentMethod: 'UPI',
+                          reference: spotUtr || undefined,
+                        })
+                      }
+                      className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs"
+                    >
+                      {spotPaymentMutation.isPending ? 'Confirming...' : 'Confirm & Check In'}
+                    </Button>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

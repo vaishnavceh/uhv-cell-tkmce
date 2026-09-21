@@ -13,6 +13,9 @@ export interface EventMetadata {
   collaborators?: string;
   coordinatorName?: string;
   coordinatorPhone?: string;
+  upiId?: string;
+  upiQrCode?: string;
+  paymentInstructions?: string;
 }
 
 export interface RegistrationRecord {

@@ -167,7 +167,11 @@ export class EventsController {
   @Roles(RoleName.SUPER_ADMIN, RoleName.ADMIN, RoleName.EDITOR, RoleName.CONTENT_MANAGER)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Record spot payment and check in attendee at the venue gate (Admin)' })
-  async spotPaymentCheckIn(@Param('regId') regId: string) {
-    return this.eventsService.spotPaymentCheckIn(regId);
+  async spotPaymentCheckIn(
+    @Param('regId') regId: string,
+    @Body('paymentMethod') paymentMethod?: 'CASH' | 'UPI',
+    @Body('reference') reference?: string,
+  ) {
+    return this.eventsService.spotPaymentCheckIn(regId, paymentMethod, reference);
   }
 }

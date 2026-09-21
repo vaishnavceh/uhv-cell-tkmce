@@ -113,9 +113,16 @@ export const api = {
     return res.data;
   },
 
-  spotPayment: async (regId: string): Promise<RegistrationRecord> => {
+  spotPayment: async (
+    regId: string,
+    paymentMethod: 'CASH' | 'UPI' = 'CASH',
+    reference?: string,
+  ): Promise<RegistrationRecord> => {
     const client = await getApiClient();
-    const res = await client.patch(`/events/registrations/${regId.trim()}/spot-payment`);
+    const res = await client.patch(`/events/registrations/${regId.trim()}/spot-payment`, {
+      paymentMethod,
+      reference,
+    });
     return res.data;
   },
 

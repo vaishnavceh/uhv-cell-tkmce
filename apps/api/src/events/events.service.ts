@@ -555,6 +555,9 @@ export class EventsService {
             category: true,
             isPaid: true,
             ticketPrice: true,
+            upiId: true,
+            upiQrCode: true,
+            paymentInstructions: true,
             status: true,
             collaborators: true,
             coordinatorName: true,
@@ -591,6 +594,9 @@ export class EventsService {
             category: true,
             isPaid: true,
             ticketPrice: true,
+            upiId: true,
+            upiQrCode: true,
+            paymentInstructions: true,
             status: true,
             collaborators: true,
             coordinatorName: true,
@@ -621,6 +627,9 @@ export class EventsService {
             category: true,
             isPaid: true,
             ticketPrice: true,
+            upiId: true,
+            upiQrCode: true,
+            paymentInstructions: true,
             status: true,
             collaborators: true,
             coordinatorName: true,
@@ -631,10 +640,19 @@ export class EventsService {
     });
   }
 
-  async spotPaymentCheckIn(regId: string) {
+  async spotPaymentCheckIn(regId: string, paymentMethod: 'CASH' | 'UPI' = 'CASH', reference?: string) {
     const reg = await this.prisma.eventRegistration.findUnique({ where: { id: regId } });
     if (!reg) throw new NotFoundException('Registration not found');
-    const note = reg.paymentReference ? `${reg.paymentReference} (Gate Spot Verified)` : 'SPOT PAYMENT (Collected at Gate)';
+
+    let note: string;
+    if (paymentMethod === 'UPI') {
+      note = reference ? `SPOT UPI: ${reference.trim()}` : 'SPOT UPI (Paid at Gate via Dynamic QR)';
+    } else if (paymentMethod === 'CASH') {
+      note = reference ? `SPOT CASH: ${reference.trim()}` : 'SPOT CASH (Collected at Gate)';
+    } else {
+      note = reg.paymentReference ? `${reg.paymentReference} (Gate Spot Verified)` : 'SPOT PAYMENT (Collected at Gate)';
+    }
+
     const updated = await this.prisma.eventRegistration.update({
       where: { id: regId },
       data: {
@@ -656,6 +674,9 @@ export class EventsService {
             category: true,
             isPaid: true,
             ticketPrice: true,
+            upiId: true,
+            upiQrCode: true,
+            paymentInstructions: true,
             status: true,
             collaborators: true,
             coordinatorName: true,

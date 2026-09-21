@@ -11,6 +11,9 @@ import {
   FlatList,
   Platform,
   KeyboardAvoidingView,
+  Image,
+  Modal,
+  Linking,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
@@ -44,6 +47,8 @@ import {
   ChevronRight,
   RotateCcw,
   Check,
+  QrCode,
+  ExternalLink,
 } from 'lucide-react-native';
 
 interface ScannerScreenProps {
@@ -58,13 +63,16 @@ export const ScannerScreen: React.FC<ScannerScreenProps> = ({ user, onLogout }) 
   // Camera settings
   const [torch, setTorch] = useState(false);
   const [facing, setFacing] = useState<'back' | 'front'>('back');
-  const [isScanning, setIsScanning] = useState(false);
 
   // Search & Record State
   const [searchId, setSearchId] = useState('');
   const [searching, setSearching] = useState(false);
   const [activeRecord, setActiveRecord] = useState<RegistrationRecord | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+
+  // Spot UPI Modal State
+  const [upiModalVisible, setUpiModalVisible] = useState(false);
+  const [spotUtr, setSpotUtr] = useState('');
 
   // History State
   const [scanHistory, setScanHistory] = useState<ScanHistoryItem[]>([]);
@@ -164,7 +172,7 @@ export const ScannerScreen: React.FC<ScannerScreenProps> = ({ user, onLogout }) 
     }, 1200);
   };
 
-  // Actions
+  // 1. Regular Check-In
   const handleCheckIn = async () => {
     if (!activeRecord) return;
     setActionLoading(true);
@@ -182,23 +190,60 @@ export const ScannerScreen: React.FC<ScannerScreenProps> = ({ user, onLogout }) 
     }
   };
 
-  const handleSpotPayment = async () => {
+  // 2. Spot Cash Payment & Check In
+  const handleSpotCash = async () => {
     if (!activeRecord) return;
+    const dueAmount = activeRecord.totalAmount || Number(activeRecord.event?.ticketPrice) || 0;
+    Alert.alert(
+      'Confirm Spot Cash',
+      `Did you collect ₹${dueAmount} in cash from ${activeRecord.fullName}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Confirm Cash & Check In',
+          style: 'default',
+          onPress: async () => {
+            setActionLoading(true);
+            try {
+              const updated = await api.spotPayment(activeRecord.id, 'CASH');
+              setActiveRecord((prev) => (prev ? { ...prev, ...updated, paymentStatus: 'VERIFIED', checkedIn: true, checkedInAt: new Date().toISOString() } : null));
+              triggerHaptic('success');
+              recordScanInHistory(activeRecord.fullName, '💵 Spot Cash & In', dueAmount);
+              Alert.alert('Cash Confirmed', `Spot cash recorded for ${activeRecord.fullName}. Entry authorized.`);
+            } catch (err: any) {
+              triggerHaptic('error');
+              Alert.alert('Error', err?.response?.data?.message || 'Could not record cash payment.');
+            } finally {
+              setActionLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // 3. Confirm Spot UPI Payment & Check In
+  const handleConfirmSpotUpi = async () => {
+    if (!activeRecord) return;
+    const dueAmount = activeRecord.totalAmount || Number(activeRecord.event?.ticketPrice) || 0;
     setActionLoading(true);
     try {
-      const updated = await api.spotPayment(activeRecord.id);
+      const updated = await api.spotPayment(activeRecord.id, 'UPI', spotUtr ? spotUtr.trim() : undefined);
       setActiveRecord((prev) => (prev ? { ...prev, ...updated, paymentStatus: 'VERIFIED', checkedIn: true, checkedInAt: new Date().toISOString() } : null));
       triggerHaptic('success');
-      recordScanInHistory(activeRecord.fullName, '💵 Spot Payment & In', activeRecord.totalAmount);
-      Alert.alert('Payment & Check-in Recorded', `Spot payment confirmed for ${activeRecord.fullName}. Entry authorized.`);
+      recordScanInHistory(activeRecord.fullName, '📱 Spot UPI & In', dueAmount);
+      setUpiModalVisible(false);
+      setSpotUtr('');
+      Alert.alert('UPI Confirmed', `Spot UPI payment confirmed for ${activeRecord.fullName}. Entry authorized.`);
     } catch (err: any) {
       triggerHaptic('error');
-      Alert.alert('Error', err?.response?.data?.message || 'Could not record spot payment.');
+      Alert.alert('Error', err?.response?.data?.message || 'Could not record UPI payment.');
     } finally {
       setActionLoading(false);
     }
   };
 
+  // 4. Verify Existing Pre-Payment Proof
   const handleVerifyProof = async () => {
     if (!activeRecord) return;
     setActionLoading(true);
@@ -216,6 +261,7 @@ export const ScannerScreen: React.FC<ScannerScreenProps> = ({ user, onLogout }) 
     }
   };
 
+  // 5. Reject / Deny Pass
   const handleReject = async () => {
     if (!activeRecord) return;
     Alert.alert(
@@ -536,7 +582,7 @@ export const ScannerScreen: React.FC<ScannerScreenProps> = ({ user, onLogout }) 
                     <View style={{ flex: 1, marginLeft: 10 }}>
                       <Text style={styles.dangerBannerTitle}>PAYMENT NOT VERIFIED / UNPAID</Text>
                       <Text style={styles.dangerBannerSub}>
-                        Fee Due: ₹{activeRecord.totalAmount || ticketFee}. Please verify receipt or collect spot payment.
+                        Fee Due: ₹{activeRecord.totalAmount || ticketFee}. Choose Spot Cash or Spot UPI below.
                       </Text>
                       {activeRecord.paymentReference && (
                         <Text style={styles.dangerRefText}>
@@ -705,8 +751,8 @@ export const ScannerScreen: React.FC<ScannerScreenProps> = ({ user, onLogout }) 
 
               {/* ACTION BUTTON CONTROLS */}
               <View style={styles.actionsContainer}>
-                {/* 1. Normal Check-in */}
-                {!activeRecord.checkedIn && (
+                {/* 1. Normal Check-in (if already verified or free) */}
+                {!activeRecord.checkedIn && (isPaymentVerified || !isPaidEvent) && (
                   <TouchableOpacity
                     style={[styles.primaryActionBtn, actionLoading && styles.btnDisabled]}
                     onPress={handleCheckIn}
@@ -723,31 +769,52 @@ export const ScannerScreen: React.FC<ScannerScreenProps> = ({ user, onLogout }) 
                   </TouchableOpacity>
                 )}
 
-                {/* 2. Spot Payment & Check In (if paid event and not verified) */}
+                {/* 2. SPOT PAYMENT OPTIONS CARD (if paid event and not verified) */}
                 {isPaidEvent && !isPaymentVerified && (
-                  <TouchableOpacity
-                    style={[styles.goldActionBtn, actionLoading && styles.btnDisabled]}
-                    onPress={handleSpotPayment}
-                    disabled={actionLoading}
-                  >
-                    <Banknote color="#000000" size={20} />
-                    <Text style={styles.goldActionBtnText}>Collect Spot Payment &amp; Check In</Text>
-                  </TouchableOpacity>
+                  <View style={styles.spotPaymentCard}>
+                    <Text style={styles.spotCardHeading}>
+                      CHOOSE SPOT PAYMENT (₹{activeRecord.totalAmount || ticketFee} DUE)
+                    </Text>
+
+                    <View style={styles.spotButtonsRow}>
+                      {/* Option A: Spot Cash */}
+                      <TouchableOpacity
+                        style={[styles.spotCashBtn, actionLoading && styles.btnDisabled]}
+                        onPress={handleSpotCash}
+                        disabled={actionLoading}
+                      >
+                        <Banknote color="#000000" size={18} />
+                        <Text style={styles.spotCashBtnText}>
+                          💵 Spot Cash (₹{activeRecord.totalAmount || ticketFee})
+                        </Text>
+                      </TouchableOpacity>
+
+                      {/* Option B: Spot UPI (Dynamic QR) */}
+                      <TouchableOpacity
+                        style={[styles.spotUpiBtn, actionLoading && styles.btnDisabled]}
+                        onPress={() => setUpiModalVisible(true)}
+                        disabled={actionLoading}
+                      >
+                        <QrCode color="#ffffff" size={18} />
+                        <Text style={styles.spotUpiBtnText}>
+                          📱 Spot UPI QR (₹{activeRecord.totalAmount || ticketFee})
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* Option C: Verify Pre-Claimed Proof */}
+                    <TouchableOpacity
+                      style={[styles.secondaryActionBtn, actionLoading && styles.btnDisabled]}
+                      onPress={handleVerifyProof}
+                      disabled={actionLoading}
+                    >
+                      <CreditCard color="#10b981" size={16} />
+                      <Text style={styles.secondaryActionBtnText}>Verify Pre-Claimed UTR</Text>
+                    </TouchableOpacity>
+                  </View>
                 )}
 
-                {/* 3. Verify Payment Only */}
-                {isPaidEvent && !isPaymentVerified && (
-                  <TouchableOpacity
-                    style={[styles.secondaryActionBtn, actionLoading && styles.btnDisabled]}
-                    onPress={handleVerifyProof}
-                    disabled={actionLoading}
-                  >
-                    <CreditCard color="#10b981" size={18} />
-                    <Text style={styles.secondaryActionBtnText}>Verify Pre-Payment UTR</Text>
-                  </TouchableOpacity>
-                )}
-
-                {/* 4. Reject Pass */}
+                {/* 3. Reject Pass */}
                 {activeRecord.status !== 'REJECTED' && (
                   <TouchableOpacity
                     style={styles.rejectBtn}
@@ -759,7 +826,7 @@ export const ScannerScreen: React.FC<ScannerScreenProps> = ({ user, onLogout }) 
                   </TouchableOpacity>
                 )}
 
-                {/* 5. Clear / Next */}
+                {/* 4. Clear / Next */}
                 <TouchableOpacity style={styles.nextBtn} onPress={handleClearRecord}>
                   <RotateCcw color="#94a3b8" size={16} />
                   <Text style={styles.nextBtnText}>Look Up Next Applicant</Text>
@@ -779,14 +846,122 @@ export const ScannerScreen: React.FC<ScannerScreenProps> = ({ user, onLogout }) 
 
               <View style={styles.quickTipsCard}>
                 <Text style={styles.quickTipsTitle}>GATE PROCEDURE:</Text>
-                <Text style={styles.quickTipItem}>• Scan ticket QR from attendee's phone or printed pass</Text>
-                <Text style={styles.quickTipItem}>• Review participant college, registration, and payment status</Text>
-                <Text style={styles.quickTipItem}>• Tap 'Check In' to grant authorized entry</Text>
-                <Text style={styles.quickTipItem}>• For spot registrations, tap 'Collect Spot Payment & Check In'</Text>
+                <Text style={styles.quickTipItem}>• Scan ticket QR or paste registration ID</Text>
+                <Text style={styles.quickTipItem}>• For unpaid passes, choose Spot Cash or Spot UPI QR</Text>
+                <Text style={styles.quickTipItem}>• Dynamic UPI QR auto-embeds event UPI ID &amp; exact amount</Text>
+                <Text style={styles.quickTipItem}>• Tap 'Check In' to authorize gate entry</Text>
               </View>
             </View>
           )}
         </ScrollView>
+      )}
+
+      {/* SPOT UPI DYNAMIC QR MODAL */}
+      {upiModalVisible && activeRecord && (
+        <Modal
+          visible={upiModalVisible}
+          animationType="slide"
+          transparent
+          onRequestClose={() => setUpiModalVisible(false)}
+        >
+          <View style={styles.modalBackdrop}>
+            <View style={styles.upiModalContent}>
+              <View style={styles.upiModalHeader}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={styles.upiIconWrap}>
+                    <QrCode color="#10b981" size={20} />
+                  </View>
+                  <View style={{ marginLeft: 10 }}>
+                    <Text style={styles.upiModalTitle}>Spot UPI Payment</Text>
+                    <Text style={styles.upiModalSub}>GPay • PhonePe • Paytm • BHIM</Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setUpiModalVisible(false)}
+                  style={styles.modalCloseBtn}
+                >
+                  <X color="#94a3b8" size={20} />
+                </TouchableOpacity>
+              </View>
+
+              {(() => {
+                const dueAmount = activeRecord.totalAmount || ticketFee;
+                const eventUpiId = activeRecord.event?.upiId || 'uhvcell@okaxis';
+                const eventTitle = activeRecord.event?.title || 'UHV Cell Event';
+                const upiUri = `upi://pay?pa=${encodeURIComponent(eventUpiId)}&pn=${encodeURIComponent(eventTitle)}&am=${dueAmount}&cu=INR&tn=${encodeURIComponent('Pass ' + (activeRecord.id || '').slice(0, 8))}`;
+                const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=8&data=${encodeURIComponent(upiUri)}`;
+
+                return (
+                  <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 10 }}>
+                    <View style={styles.upiQrBox}>
+                      <Image
+                        source={{ uri: qrUrl }}
+                        style={styles.qrImage}
+                        resizeMode="contain"
+                      />
+                      <Text style={styles.upiAmountLabel}>Payable Amount</Text>
+                      <Text style={styles.upiAmountText}>₹{dueAmount}</Text>
+                    </View>
+
+                    <View style={styles.upiIdRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.upiIdSub}>EVENT UPI ID</Text>
+                        <Text style={styles.upiIdMain}>{eventUpiId}</Text>
+                      </View>
+                      <TouchableOpacity
+                        style={styles.copyBtn}
+                        onPress={() => {
+                          Linking.openURL(upiUri).catch(() => {
+                            Alert.alert('UPI Address', eventUpiId);
+                          });
+                        }}
+                      >
+                        <ExternalLink color="#10b981" size={14} />
+                        <Text style={styles.copyBtnText}>Open App</Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.utrInputWrap}>
+                      <Text style={styles.utrLabel}>TRANSACTION UTR / REF NO. (OPTIONAL):</Text>
+                      <TextInput
+                        style={styles.utrInput}
+                        placeholder="e.g. 427819284912"
+                        placeholderTextColor="#64748b"
+                        value={spotUtr}
+                        onChangeText={setSpotUtr}
+                        keyboardType="numeric"
+                      />
+                    </View>
+
+                    <TouchableOpacity
+                      style={[styles.confirmUpiBtn, actionLoading && styles.btnDisabled]}
+                      onPress={handleConfirmSpotUpi}
+                      disabled={actionLoading}
+                    >
+                      {actionLoading ? (
+                        <ActivityIndicator color="#ffffff" />
+                      ) : (
+                        <>
+                          <CheckCircle color="#ffffff" size={18} />
+                          <Text style={styles.confirmUpiBtnText}>
+                            Confirm Payment &amp; Check In
+                          </Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.cancelUpiBtn}
+                      onPress={() => setUpiModalVisible(false)}
+                    >
+                      <Text style={styles.cancelUpiBtnText}>Cancel</Text>
+                    </TouchableOpacity>
+                  </ScrollView>
+                );
+              })()}
+            </View>
+          </View>
+        </Modal>
       )}
     </KeyboardAvoidingView>
   );
@@ -1223,35 +1398,69 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginLeft: 8,
   },
-  goldActionBtn: {
+  spotPaymentCard: {
+    backgroundColor: '#042f24',
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#059669',
+    gap: 10,
+  },
+  spotCardHeading: {
+    color: '#34d399',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
+  spotButtonsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  spotCashBtn: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#f59e0b',
-    paddingVertical: 14,
-    borderRadius: 12,
+    paddingVertical: 12,
+    borderRadius: 10,
   },
-  goldActionBtnText: {
+  spotCashBtnText: {
     color: '#000000',
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '800',
-    marginLeft: 8,
+    marginLeft: 6,
+  },
+  spotUpiBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#059669',
+    paddingVertical: 12,
+    borderRadius: 10,
+  },
+  spotUpiBtnText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '800',
+    marginLeft: 6,
   },
   secondaryActionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'transparent',
-    borderWidth: 1.5,
-    borderColor: '#10b981',
-    paddingVertical: 12,
-    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.4)',
+    paddingVertical: 10,
+    borderRadius: 10,
   },
   secondaryActionBtnText: {
     color: '#10b981',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
-    marginLeft: 8,
+    marginLeft: 6,
   },
   rejectBtn: {
     flexDirection: 'row',
@@ -1482,5 +1691,157 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 14,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  upiModalContent: {
+    backgroundColor: '#03241b',
+    borderRadius: 20,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: '#064e3b',
+    maxHeight: '85%',
+  },
+  upiModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#064e3b',
+    marginBottom: 14,
+  },
+  upiIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#064e3b',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  upiModalTitle: {
+    color: '#f8fafc',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  upiModalSub: {
+    color: '#94a3b8',
+    fontSize: 11,
+  },
+  modalCloseBtn: {
+    padding: 6,
+  },
+  upiQrBox: {
+    backgroundColor: '#021812',
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#064e3b',
+    marginBottom: 12,
+  },
+  qrImage: {
+    width: 200,
+    height: 200,
+    borderRadius: 12,
+    backgroundColor: '#ffffff',
+  },
+  upiAmountLabel: {
+    color: '#94a3b8',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 10,
+  },
+  upiAmountText: {
+    color: '#34d399',
+    fontSize: 24,
+    fontWeight: '900',
+  },
+  upiIdRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#042f24',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#064e3b',
+    marginBottom: 12,
+  },
+  upiIdSub: {
+    color: '#6ee7b7',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
+  upiIdMain: {
+    color: '#f8fafc',
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  copyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+  },
+  copyBtnText: {
+    color: '#10b981',
+    fontSize: 11,
+    fontWeight: '700',
+    marginLeft: 4,
+  },
+  utrInputWrap: {
+    marginBottom: 14,
+  },
+  utrLabel: {
+    color: '#94a3b8',
+    fontSize: 11,
+    fontWeight: '800',
+    marginBottom: 6,
+  },
+  utrInput: {
+    backgroundColor: '#021812',
+    borderWidth: 1,
+    borderColor: '#064e3b',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: '#f8fafc',
+    fontSize: 13,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  confirmUpiBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#059669',
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  confirmUpiBtnText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '800',
+    marginLeft: 6,
+  },
+  cancelUpiBtn: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  cancelUpiBtnText: {
+    color: '#94a3b8',
+    fontSize: 13,
+    fontWeight: '600',
   },
 });
