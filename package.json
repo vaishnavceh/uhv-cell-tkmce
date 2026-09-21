@@ -8,8 +8,8 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build --workspace=apps/web",
-    "build:web": "npm run build --workspace=apps/web",
+    "build": "cd apps/web && npm run build",
+    "build:web": "cd apps/web && npm run build",
     "dev": "docker compose up --build",
     "dev:down": "docker compose down",
     "prod": "docker compose -f docker-compose.prod.yml up --build -d",
