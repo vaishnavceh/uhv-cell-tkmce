@@ -65,9 +65,30 @@ export const EventDetail: React.FC = () => {
         </div>
 
         {/* Main Event Article */}
-        <article className="bg-white rounded-xl border border-emerald-900/10 shadow-card p-8 sm:p-10 space-y-8 text-left">
-          
-          <div className="space-y-4 border-b border-slate-100 pb-6">
+        <article className="bg-white rounded-2xl border border-emerald-900/10 shadow-card overflow-hidden text-left">
+          {/* Top Hero Banner */}
+          {event.coverImage ? (
+            <div className="w-full relative aspect-[21/9] sm:aspect-[16/7] max-h-[420px] bg-slate-900 overflow-hidden">
+              <img
+                src={event.coverImage}
+                alt={event.title}
+                className="w-full h-full object-cover object-center"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
+            </div>
+          ) : (
+            <div className="w-full h-28 sm:h-36 bg-gradient-to-r from-emerald-900 via-teal-900 to-institutional-950 relative overflow-hidden flex items-center px-8">
+              <div className="flex items-center gap-3 text-white/30">
+                <Calendar className="w-10 h-10" />
+                <span className="text-lg font-bold tracking-wider uppercase text-white/40 font-mono">
+                  UHV Cell Event Calendar
+                </span>
+              </div>
+            </div>
+          )}
+
+          <div className="p-8 sm:p-10 space-y-8">
+            <div className="space-y-4 border-b border-slate-100 pb-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <span className="text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
                 {event.category}
@@ -307,7 +328,8 @@ export const EventDetail: React.FC = () => {
               </span>
             )}
           </div>
-        </article>
+        </div>
+      </article>
       </div>
     </div>
   );
@@ -337,6 +359,7 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
   const [isDownloadingPng, setIsDownloadingPng] = React.useState(false);
   const [qrDataUrl, setQrDataUrl] = React.useState<string>('');
   const [uhvLogoBase64, setUhvLogoBase64] = React.useState<string>('');
+  const [tkmLogoBase64, setTkmLogoBase64] = React.useState<string>('');
   const [collaboratorLogoBase64, setCollaboratorLogoBase64] = React.useState<string>('');
   const ticketRef = React.useRef<HTMLDivElement>(null);
 
@@ -352,12 +375,23 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
 
   // Convert logos to base64 for canvas & PNG export compatibility
   React.useEffect(() => {
-    fetch('/assets/uhv_emblem_white.png')
+    fetch('/assets/uhv_logo_white.png')
       .then((r) => r.blob())
       .then((b) => {
         const reader = new FileReader();
         reader.onloadend = () => {
           if (typeof reader.result === 'string') setUhvLogoBase64(reader.result);
+        };
+        reader.readAsDataURL(b);
+      })
+      .catch(() => {});
+
+    fetch('/assets/tkm-logo.png')
+      .then((r) => r.blob())
+      .then((b) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          if (typeof reader.result === 'string') setTkmLogoBase64(reader.result);
         };
         reader.readAsDataURL(b);
       })
@@ -634,17 +668,34 @@ Universal Human Values Cell • TKM College of Engineering, Kollam`;
               <div className="absolute -left-6 -bottom-6 w-36 h-36 rounded-full border border-slate-700/20 pointer-events-none" />
               <div className="absolute -left-0 -bottom-0 w-24 h-24 rounded-full border border-slate-700/20 pointer-events-none" />
 
+              {/* Event Cover Image Backdrop Watermark (if present) */}
+              {event.coverImage && (
+                <div
+                  className="absolute inset-0 bg-cover bg-center opacity-10 pointer-events-none mix-blend-luminosity filter blur-[1px]"
+                  style={{ backgroundImage: `url(${event.coverImage})` }}
+                />
+              )}
+
               <div>
                 {/* Co-Branded Header: UHV Cell Logo + Collaborator Logo */}
                 <div className="flex items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-800/80">
                   <div className="flex items-center gap-3">
-                    <img
-                      src={uhvLogoBase64 || '/assets/uhv_emblem_white.png'}
-                      alt="UHV Cell Logo"
-                      className="w-8 h-8 object-contain shrink-0"
-                    />
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div className="w-9 h-9 rounded-full bg-white p-0.5 flex items-center justify-center shadow-sm">
+                        <img
+                          src={tkmLogoBase64 || '/assets/tkm-logo.png'}
+                          alt="TKMCE Seal"
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                      <img
+                        src={uhvLogoBase64 || '/assets/uhv_logo_white.png'}
+                        alt="UHV Cell Logo"
+                        className="w-9 h-9 object-contain drop-shadow-md"
+                      />
+                    </div>
                     <div>
-                      <span className="text-[11px] uppercase font-black tracking-widest text-emerald-400 block">
+                      <span className="text-[11px] sm:text-xs uppercase font-black tracking-widest text-emerald-400 block">
                         UNIVERSAL HUMAN VALUES CELL
                       </span>
                       <span className="text-[9px] uppercase font-bold text-slate-300 block">
@@ -655,20 +706,27 @@ Universal Human Values Cell • TKM College of Engineering, Kollam`;
 
                   <div className="flex items-center gap-2 shrink-0">
                     {event.collaborators && (
-                      <div className="flex items-center gap-2 bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-700">
+                      <div className="flex items-center gap-2 bg-slate-800/90 px-3 py-1.5 rounded-lg border border-slate-700 shadow-sm">
                         {event.collaboratorLogo ? (
-                          <img
-                            src={collaboratorLogoBase64 || event.collaboratorLogo}
-                            alt="Collaborator Logo"
-                            className="h-6 max-w-[80px] object-contain rounded"
-                          />
-                        ) : null}
-                        <span className="text-[9px] font-bold text-slate-300 truncate max-w-[130px]">
+                          <div className="bg-white rounded p-0.5 shadow-2xs shrink-0 flex items-center justify-center">
+                            <img
+                              src={collaboratorLogoBase64 || event.collaboratorLogo}
+                              alt="Collaborator Logo"
+                              className="h-6 max-w-[80px] object-contain rounded"
+                              onError={(e) => {
+                                (e.currentTarget.parentElement as HTMLElement).style.display = 'none';
+                              }}
+                            />
+                          </div>
+                        ) : (
+                          <Building2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                        )}
+                        <span className="text-[9px] font-bold text-slate-200 truncate max-w-[130px]">
                           🤝 {event.collaborators}
                         </span>
                       </div>
                     )}
-                    <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded bg-emerald-950/80 border border-emerald-500/30 text-emerald-300">
+                    <span className="text-[9px] font-extrabold uppercase px-2.5 py-1 rounded bg-emerald-950/90 border border-emerald-500/40 text-emerald-300">
                       {isGroup ? `Group Pass (${successData.groupSize})` : 'Entry Pass'}
                     </span>
                   </div>

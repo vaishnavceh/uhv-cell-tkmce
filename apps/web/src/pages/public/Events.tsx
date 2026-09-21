@@ -121,6 +121,18 @@ export const Events: React.FC = () => {
                 key={ev.id}
                 className="bg-white rounded-xl border border-slate-200/80 shadow-subtle overflow-hidden flex flex-col justify-between hover:shadow-md transition-shadow group"
               >
+                {/* Event Cover Banner */}
+                {ev.coverImage ? (
+                  <div className="w-full h-44 overflow-hidden relative bg-slate-100">
+                    <img
+                      src={ev.coverImage}
+                      alt={ev.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
+                  </div>
+                ) : null}
+
                 <div className="p-5">
                   <div className="flex items-center justify-between gap-2 mb-3">
                     <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">

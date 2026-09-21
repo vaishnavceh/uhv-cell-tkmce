@@ -69,6 +69,7 @@ export const EventsManager: React.FC = () => {
     mutationFn: async () => {
       const payload: any = {
         ...formData,
+        coverImage: formData.coverImage || null,
         collaborators: formData.collaborators || null,
         collaboratorLogo: formData.collaboratorLogo || null,
         isPaid: formData.isPaid,
@@ -482,31 +483,20 @@ export const EventsManager: React.FC = () => {
               {/* Collaborators & Logo Section */}
               <div className="p-3.5 bg-blue-50/70 border border-blue-200 rounded-xl space-y-3">
                 <h5 className="text-xs font-bold text-blue-950 uppercase tracking-wider">Official Collaborator / Co-Host (Optional)</h5>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <Input
-                    label="Collaborator Organization Name"
-                    value={formData.collaborators}
-                    onChange={(e) => setFormData({ ...formData, collaborators: e.target.value })}
-                    placeholder="e.g. Government of Kerala, AICTE, IEEE"
-                  />
-                  <Input
-                    label="Collaborator Logo URL"
-                    value={formData.collaboratorLogo}
-                    onChange={(e) => setFormData({ ...formData, collaboratorLogo: e.target.value })}
-                    placeholder="https://... or /assets/logo.png"
-                  />
-                </div>
-                {formData.collaboratorLogo && (
-                  <div className="flex items-center gap-3 pt-1">
-                    <span className="text-[11px] text-slate-500 font-medium">Logo Preview:</span>
-                    <img
-                      src={formData.collaboratorLogo}
-                      alt="Collaborator Preview"
-                      className="h-8 max-w-[120px] object-contain rounded bg-white p-1 border border-slate-200 shadow-2xs"
-                      onError={(e) => (e.currentTarget.style.display = 'none')}
-                    />
-                  </div>
-                )}
+                <Input
+                  label="Collaborator Organization Name"
+                  value={formData.collaborators}
+                  onChange={(e) => setFormData({ ...formData, collaborators: e.target.value })}
+                  placeholder="e.g. Government of Kerala, AICTE, IEEE"
+                />
+                <ImageUpload
+                  label="Collaborator / Partner Logo (Optional)"
+                  value={formData.collaboratorLogo}
+                  onChange={(url) => setFormData({ ...formData, collaboratorLogo: url })}
+                  folder="collaborators"
+                  aspectRatio="auto"
+                  helperText="Upload official logo (PNG/JPG/SVG) or paste image URL"
+                />
               </div>
 
               {/* Coordinator Contact For Enquiries (Fixed 2 columns) */}
