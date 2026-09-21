@@ -128,77 +128,149 @@ export const EventDetail: React.FC = () => {
               </p>
             )}
 
-            {/* Official Co-branding Banner with Logos */}
-            {event.collaborators && (
-              <div className="p-4 rounded-xl bg-gradient-to-r from-blue-50 via-slate-50 to-emerald-50/70 border border-blue-200/80 flex items-center justify-between gap-3.5 shadow-2xs">
-                <div className="flex items-center gap-3.5 min-w-0">
-                  {event.collaboratorLogo ? (
-                    <img
-                      src={event.collaboratorLogo}
-                      alt="Collaborator Logo"
-                      className="w-10 h-10 object-contain rounded-lg bg-white p-1 border border-blue-200 shadow-sm shrink-0"
-                      onError={(e) => (e.currentTarget.style.display = 'none')}
-                    />
-                  ) : (
-                    <div className="w-10 h-10 rounded-xl bg-blue-700 text-white flex items-center justify-center shrink-0 shadow-sm">
-                      <Building2 className="w-5 h-5" />
-                    </div>
-                  )}
-                  <div className="min-w-0">
-                    <span className="text-[10px] uppercase font-extrabold tracking-wider text-blue-700 block">
-                      Official Event Partner &amp; Co-Host
-                    </span>
-                    <span className="text-sm sm:text-base font-black text-slate-900 truncate block">
-                      {event.collaborators}
-                    </span>
+            {/* Official Co-branding Banner with Logos (Supports Split Collaborators) */}
+            {((event.splitCollaborators && event.splitCollaborators.length > 0) || event.collaborators) && (
+              <div className="p-4 rounded-xl bg-gradient-to-r from-blue-50 via-slate-50 to-emerald-50/70 border border-blue-200/80 space-y-3 shadow-2xs">
+                <div className="flex items-center justify-between gap-2 border-b border-blue-200/60 pb-2">
+                  <span className="text-[10px] uppercase font-extrabold tracking-wider text-blue-800">
+                    Official Event Partner(s) &amp; Co-Host(s)
+                  </span>
+                  <div className="flex items-center gap-2 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs">
+                    <img src="/assets/uhv_logo_green.png" alt="UHV Emblem" className="w-5 h-5 object-contain" />
+                    <span className="text-[10px] font-bold text-slate-700">UHV Cell TKMCE</span>
                   </div>
                 </div>
-                <div className="hidden sm:flex items-center gap-2 shrink-0 bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-2xs">
-                  <img src="/assets/uhv_emblem_navy.png" alt="UHV Emblem" className="w-5 h-5 object-contain" />
-                  <span className="text-[10px] font-bold text-slate-700">UHV Cell TKMCE</span>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  {event.splitCollaborators && event.splitCollaborators.length > 0 ? (
+                    event.splitCollaborators.map((c) => (
+                      <div
+                        key={c.id}
+                        className="flex items-center gap-2.5 bg-white px-3 py-1.5 rounded-lg border border-blue-200 shadow-2xs"
+                      >
+                        {c.logoUrl ? (
+                          <img
+                            src={c.logoUrl}
+                            alt={c.name}
+                            className="w-8 h-8 object-contain rounded p-0.5 border border-slate-100 shrink-0 bg-white"
+                            onError={(e) => (e.currentTarget.style.display = 'none')}
+                          />
+                        ) : (
+                          <div className="w-7 h-7 rounded-lg bg-blue-700 text-white flex items-center justify-center shrink-0 shadow-xs">
+                            <Building2 className="w-4 h-4" />
+                          </div>
+                        )}
+                        <span className="text-xs sm:text-sm font-black text-slate-900">
+                          {c.name}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      {event.collaboratorLogo ? (
+                        <img
+                          src={event.collaboratorLogo}
+                          alt="Collaborator Logo"
+                          className="w-10 h-10 object-contain rounded-lg bg-white p-1 border border-blue-200 shadow-sm shrink-0"
+                          onError={(e) => (e.currentTarget.style.display = 'none')}
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-xl bg-blue-700 text-white flex items-center justify-center shrink-0 shadow-sm">
+                          <Building2 className="w-5 h-5" />
+                        </div>
+                      )}
+                      <span className="text-sm sm:text-base font-black text-slate-900">
+                        {event.collaborators}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
 
-            {/* Coordinator Contact For Enquiries (Fixed card) */}
-            {event.coordinatorName && (
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-blue-700 text-white flex items-center justify-center font-bold shrink-0 shadow-sm">
-                    <Phone className="w-4 h-4" />
+            {/* Coordinator Contact For Enquiries (Supports Multiple Coordinators) */}
+            {((event.coordinators && event.coordinators.length > 0) || event.coordinatorName) && (
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3 shadow-2xs">
+                <div className="flex items-center gap-2 border-b border-slate-200/80 pb-2">
+                  <div className="w-6 h-6 rounded-full bg-blue-700 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
+                    <Phone className="w-3.5 h-3.5" />
                   </div>
-                  <div>
-                    <span className="text-[10px] uppercase font-extrabold text-blue-700 tracking-wider block">
-                      For Enquiries Contact Coordinator
-                    </span>
-                    <span className="font-bold text-slate-900 text-sm block">
-                      {event.coordinatorName}
-                    </span>
-                    {event.coordinatorPhone && (
-                      <span className="text-xs font-mono text-slate-600">
-                        {event.coordinatorPhone}
-                      </span>
-                    )}
-                  </div>
+                  <span className="text-[10px] uppercase font-extrabold text-blue-700 tracking-wider">
+                    For Enquiries Contact Coordinator{(event.coordinators && event.coordinators.length > 1) ? 's' : ''}
+                  </span>
                 </div>
-                {event.coordinatorPhone && (
-                  <div className="flex items-center gap-2 shrink-0">
-                    <a
-                      href={`tel:${event.coordinatorPhone}`}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold shadow-2xs transition"
-                    >
-                      <Phone className="w-3.5 h-3.5" /> Call
-                    </a>
-                    <a
-                      href={`https://wa.me/${event.coordinatorPhone.replace(/[^0-9]/g, '')}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-2xs transition"
-                    >
-                      WhatsApp
-                    </a>
-                  </div>
-                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {event.coordinators && event.coordinators.length > 0 ? (
+                    event.coordinators.map((coord) => (
+                      <div
+                        key={coord.id}
+                        className="p-3 bg-white rounded-lg border border-slate-200 flex items-center justify-between gap-2 shadow-2xs"
+                      >
+                        <div className="min-w-0">
+                          <span className="font-bold text-slate-900 text-xs sm:text-sm block truncate">
+                            {coord.name}
+                          </span>
+                          <span className="text-[10px] font-medium text-emerald-700 block">
+                            {coord.role || 'Event Coordinator'}
+                          </span>
+                          <span className="text-xs font-mono text-slate-500 block">
+                            {coord.phone}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <a
+                            href={`tel:${coord.phone}`}
+                            className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold transition flex items-center gap-1"
+                            title="Call Coordinator"
+                          >
+                            <Phone className="w-3.5 h-3.5" /> Call
+                          </a>
+                          <a
+                            href={`https://wa.me/${coord.phone.replace(/[^0-9]/g, '')}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold transition"
+                            title="Chat on WhatsApp"
+                          >
+                            WhatsApp
+                          </a>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-3 bg-white rounded-lg border border-slate-200 flex items-center justify-between gap-2 shadow-2xs col-span-2">
+                      <div>
+                        <span className="font-bold text-slate-900 text-sm block">
+                          {event.coordinatorName}
+                        </span>
+                        {event.coordinatorPhone && (
+                          <span className="text-xs font-mono text-slate-600 block">
+                            {event.coordinatorPhone}
+                          </span>
+                        )}
+                      </div>
+                      {event.coordinatorPhone && (
+                        <div className="flex items-center gap-2 shrink-0">
+                          <a
+                            href={`tel:${event.coordinatorPhone}`}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold shadow-2xs transition"
+                          >
+                            <Phone className="w-3.5 h-3.5" /> Call
+                          </a>
+                          <a
+                            href={`https://wa.me/${event.coordinatorPhone.replace(/[^0-9]/g, '')}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-2xs transition"
+                          >
+                            WhatsApp
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -540,10 +612,17 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
       ? `₹${successData.totalAmount || (event.ticketPrice || 0) * (successData.groupSize || 1)}`
       : 'FREE PASS';
 
+    const collabsText = (event.splitCollaborators && event.splitCollaborators.length > 0)
+      ? `In Collaboration With: ${event.splitCollaborators.map((c) => c.name).join(', ')}\n`
+      : (event.collaborators ? `In Collaboration With: ${event.collaborators}\n` : '');
+
+    const coordsText = (event.coordinators && event.coordinators.length > 0)
+      ? `FOR ENQUIRIES CONTACT COORDINATORS:\n` + event.coordinators.map((c) => `• ${c.name} (${c.phone})${c.role ? ` - ${c.role}` : ''}`).join('\n') + '\n'
+      : (event.coordinatorName ? `FOR ENQUIRIES CONTACT COORDINATOR:\n${event.coordinatorName} (${event.coordinatorPhone || ''})\n` : '');
+
     const gmailSubject = `🎟️ Entry Pass Confirmation: ${event.title}`;
     const gmailBody = `UNIVERSAL HUMAN VALUES CELL - TKM COLLEGE OF ENGINEERING
-${event.collaborators ? `In Collaboration With: ${event.collaborators}\n` : ''}
-EVENT REGISTRATION CONFIRMATION
+${collabsText}EVENT REGISTRATION CONFIRMATION
 
 Event: ${event.title}
 Date: ${formatDate(event.eventDate)}
@@ -553,16 +632,12 @@ Venue: ${event.venue}
 PASS DETAILS:
 Ticket ID: ${regCode}
 Ticket Type: ${isGroup ? `Group Pass (${successData.groupSize || 2} Attendees)` : 'Individual Pass'}
-${isGroup && successData.groupName ? `Team / Group Name: ${successData.groupName}\n` : ''}
-Lead Attendee: ${successData.fullName}
+${isGroup && successData.groupName ? `Team / Group Name: ${successData.groupName}\n` : ''}Lead Attendee: ${successData.fullName}
 Email: ${successData.email}
 Phone: ${successData.phone}
-${isGroup && membersList.length > 0 ? `Group Members: ${membersList.join(', ')}\n` : ''}
-Registration Fee: ${totalFeeText}
+${isGroup && membersList.length > 0 ? `Group Members: ${membersList.join(', ')}\n` : ''}Registration Fee: ${totalFeeText}
 
-${event.coordinatorName ? `FOR ENQUIRIES CONTACT COORDINATOR:
-${event.coordinatorName} ${event.coordinatorPhone ? `(${event.coordinatorPhone})` : ''}\n` : ''}
-Please present this confirmation email or your digital ticket pass at the venue entrance.
+${coordsText}Please present this confirmation email or your digital ticket pass at the venue entrance.
 Universal Human Values Cell • TKM College of Engineering, Kollam`;
 
     const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(successData.email)}&su=${encodeURIComponent(gmailSubject)}&body=${encodeURIComponent(gmailBody)}`;
@@ -705,7 +780,29 @@ Universal Human Values Cell • TKM College of Engineering, Kollam`;
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
-                    {event.collaborators && (
+                    {event.splitCollaborators && event.splitCollaborators.length > 0 ? (
+                      <div className="flex items-center gap-2 bg-slate-800/90 px-3 py-1.5 rounded-lg border border-slate-700 shadow-sm">
+                        <div className="flex items-center -space-x-1">
+                          {event.splitCollaborators.map((c) =>
+                            c.logoUrl ? (
+                              <div key={c.id} className="bg-white rounded p-0.5 shadow-2xs shrink-0 flex items-center justify-center">
+                                <img
+                                  src={c.logoUrl}
+                                  alt={c.name}
+                                  className="h-6 max-w-[65px] object-contain rounded"
+                                  onError={(e) => {
+                                    (e.currentTarget.parentElement as HTMLElement).style.display = 'none';
+                                  }}
+                                />
+                              </div>
+                            ) : null
+                          )}
+                        </div>
+                        <span className="text-[9px] font-bold text-slate-200 truncate max-w-[130px]">
+                          🤝 {event.splitCollaborators.map((c) => c.name).join(', ')}
+                        </span>
+                      </div>
+                    ) : event.collaborators ? (
                       <div className="flex items-center gap-2 bg-slate-800/90 px-3 py-1.5 rounded-lg border border-slate-700 shadow-sm">
                         {event.collaboratorLogo ? (
                           <div className="bg-white rounded p-0.5 shadow-2xs shrink-0 flex items-center justify-center">
@@ -725,7 +822,7 @@ Universal Human Values Cell • TKM College of Engineering, Kollam`;
                           🤝 {event.collaborators}
                         </span>
                       </div>
-                    )}
+                    ) : null}
                     <span className="text-[9px] font-extrabold uppercase px-2.5 py-1 rounded bg-emerald-950/90 border border-emerald-500/40 text-emerald-300">
                       {isGroup ? `Group Pass (${successData.groupSize})` : 'Entry Pass'}
                     </span>
@@ -831,9 +928,10 @@ Universal Human Values Cell • TKM College of Engineering, Kollam`;
                 <div className="my-1.5 py-1 px-2 rounded bg-slate-900 border border-slate-800 text-[10px] font-bold text-emerald-300">
                   {totalFeeText}
                 </div>
-                {event.coordinatorName && (
-                  <span className="text-[8px] font-medium text-slate-400 block truncate max-w-[150px] mx-auto mt-0.5">
-                    Enquiries: {event.coordinatorName} {event.coordinatorPhone ? `(${event.coordinatorPhone})` : ''}
+                {((event.coordinators && event.coordinators.length > 0) || event.coordinatorName) && (
+                  <span className="text-[8px] font-medium text-slate-400 block truncate max-w-[155px] mx-auto mt-0.5">
+                    Enquiries: {event.coordinators?.[0]?.name || event.coordinatorName}{' '}
+                    {event.coordinators?.[0]?.phone || event.coordinatorPhone ? `(${event.coordinators?.[0]?.phone || event.coordinatorPhone})` : ''}
                   </span>
                 )}
               </div>

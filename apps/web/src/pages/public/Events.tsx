@@ -166,26 +166,48 @@ export const Events: React.FC = () => {
                     {ev.title}
                   </h3>
 
-                  {/* Prominent Collaborator Details with Logo */}
-                  {ev.collaborators && (
-                    <div className="mb-3 px-3 py-2 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50/70 border border-blue-200/80 flex items-center gap-2.5">
-                      {ev.collaboratorLogo ? (
-                        <img
-                          src={ev.collaboratorLogo}
-                          alt="Collaborator Logo"
-                          className="w-7 h-7 object-contain rounded bg-white p-0.5 border border-blue-200 shadow-2xs shrink-0"
-                          onError={(e) => (e.currentTarget.style.display = 'none')}
-                        />
-                      ) : (
-                        <Building2 className="w-4 h-4 text-blue-700 shrink-0" />
-                      )}
-                      <div className="min-w-0">
-                        <span className="text-[9px] uppercase font-extrabold tracking-wider text-blue-700 block">
-                          Official Collaborator / Co-Host
-                        </span>
-                        <span className="text-xs font-black text-blue-950 truncate block">
-                          {ev.collaborators}
-                        </span>
+                  {/* Prominent Collaborator Details with Logo (Supports Split Collaborators) */}
+                  {((ev.splitCollaborators && ev.splitCollaborators.length > 0) || ev.collaborators) && (
+                    <div className="mb-3 px-3 py-2 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50/70 border border-blue-200/80 space-y-1.5">
+                      <span className="text-[9px] uppercase font-extrabold tracking-wider text-blue-700 block">
+                        Official Partner(s) / Co-Host(s)
+                      </span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {ev.splitCollaborators && ev.splitCollaborators.length > 0 ? (
+                          ev.splitCollaborators.map((c) => (
+                            <div key={c.id} className="flex items-center gap-1.5 bg-white px-2 py-1 rounded border border-blue-100 shadow-2xs">
+                              {c.logoUrl ? (
+                                <img
+                                  src={c.logoUrl}
+                                  alt={c.name}
+                                  className="w-5 h-5 object-contain rounded bg-white shrink-0"
+                                  onError={(e) => (e.currentTarget.style.display = 'none')}
+                                />
+                              ) : (
+                                <Building2 className="w-3.5 h-3.5 text-blue-700 shrink-0" />
+                              )}
+                              <span className="text-[11px] font-black text-blue-950 truncate max-w-[140px]">
+                                {c.name}
+                              </span>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            {ev.collaboratorLogo ? (
+                              <img
+                                src={ev.collaboratorLogo}
+                                alt="Collaborator Logo"
+                                className="w-6 h-6 object-contain rounded bg-white p-0.5 border border-blue-200 shadow-2xs shrink-0"
+                                onError={(e) => (e.currentTarget.style.display = 'none')}
+                              />
+                            ) : (
+                              <Building2 className="w-4 h-4 text-blue-700 shrink-0" />
+                            )}
+                            <span className="text-xs font-black text-blue-950 truncate">
+                              {ev.collaborators}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
@@ -210,22 +232,42 @@ export const Events: React.FC = () => {
                       <span className="truncate">{ev.venue}</span>
                     </div>
 
-                    {/* Fixed Coordinator Enquiries info */}
-                    {ev.coordinatorName && (
-                      <div className="flex items-center gap-1.5 text-[11px] text-blue-900 bg-blue-50/70 px-2 py-1 rounded border border-blue-100 mt-2">
-                        <Phone className="w-3 h-3 text-blue-700 shrink-0" />
-                        <span className="truncate">
-                          Enquiries: <strong>{ev.coordinatorName}</strong>
-                          {ev.coordinatorPhone && (
-                            <a
-                              href={`tel:${ev.coordinatorPhone}`}
-                              className="ml-1 text-blue-700 font-bold hover:underline"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              ({ev.coordinatorPhone})
-                            </a>
+                    {/* Coordinator Enquiries Info (Supports Multiple Coordinators) */}
+                    {((ev.coordinators && ev.coordinators.length > 0) || ev.coordinatorName) && (
+                      <div className="text-[11px] text-blue-900 bg-blue-50/70 p-2 rounded border border-blue-100 mt-2 space-y-1">
+                        <div className="flex items-center gap-1 font-semibold text-blue-800">
+                          <Phone className="w-3 h-3 text-blue-700 shrink-0" />
+                          <span>Coordinator Contact:</span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+                          {ev.coordinators && ev.coordinators.length > 0 ? (
+                            ev.coordinators.map((c) => (
+                              <span key={c.id} className="inline-flex items-center gap-1">
+                                <strong>{c.name}</strong>
+                                <a
+                                  href={`tel:${c.phone}`}
+                                  className="underline hover:text-blue-950 font-mono text-[10px]"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {c.phone}
+                                </a>
+                              </span>
+                            ))
+                          ) : (
+                            <span className="inline-flex items-center gap-1">
+                              <strong>{ev.coordinatorName}</strong>
+                              {ev.coordinatorPhone && (
+                                <a
+                                  href={`tel:${ev.coordinatorPhone}`}
+                                  className="underline hover:text-blue-950 font-mono text-[10px]"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {ev.coordinatorPhone}
+                                </a>
+                              )}
+                            </span>
                           )}
-                        </span>
+                        </div>
                       </div>
                     )}
                   </div>

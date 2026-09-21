@@ -118,6 +118,20 @@ export interface Activity {
   updatedAt: string;
 }
 
+export interface EventCoordinator {
+  id: string;
+  name: string;
+  phone: string;
+  email?: string;
+  role?: string;
+}
+
+export interface SplitCollaborator {
+  id: string;
+  name: string;
+  logoUrl?: string;
+}
+
 // Event
 export interface EventItem {
   id: string;
@@ -133,10 +147,12 @@ export interface EventItem {
   coverImage?: string | null;
   collaborators?: string | null;
   collaboratorLogo?: string | null;
+  splitCollaborators?: SplitCollaborator[];
   isPaid?: boolean;
   ticketPrice?: number;
   coordinatorName?: string | null;
   coordinatorPhone?: string | null;
+  coordinators?: EventCoordinator[];
   registrationUrl?: string | null;
   enableInternalReg: boolean;
   registrationUploadLink?: string | null;

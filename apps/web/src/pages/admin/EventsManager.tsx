@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../api/client';
-import { EventItem, EventStatus, RegistrationFieldDefinition } from '@uhv/shared-types';
+import { EventItem, EventStatus, RegistrationFieldDefinition, EventCoordinator, SplitCollaborator } from '@uhv/shared-types';
 import { usePageTitle } from '../../hooks/usePageTitle';
-import { Plus, Edit2, Trash2, Calendar, Search, ExternalLink, Users, Download, CheckCircle, XCircle } from 'lucide-react';
+import { Plus, Edit2, Trash2, Calendar, Search, ExternalLink, Users, Download, CheckCircle, XCircle, Phone, Building2 } from 'lucide-react';
 import { formatDate } from '../../utils/cn';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -37,10 +37,12 @@ export const EventsManager: React.FC = () => {
     coverImage: '',
     collaborators: '',
     collaboratorLogo: '',
+    splitCollaborators: [] as SplitCollaborator[],
     isPaid: false,
     ticketPrice: '',
     coordinatorName: '',
     coordinatorPhone: '',
+    coordinators: [] as EventCoordinator[],
     registrationUrl: '',
     enableInternalReg: false,
     registrationUploadLink: '',
@@ -67,15 +69,24 @@ export const EventsManager: React.FC = () => {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
+      const activeCollabs = formData.splitCollaborators.filter((c) => c.name.trim());
+      const collabsString = activeCollabs.map((c) => c.name.trim()).join(', ');
+      const firstLogo = activeCollabs.find((c) => c.logoUrl?.trim())?.logoUrl || null;
+
+      const activeCoords = formData.coordinators.filter((c) => c.name.trim());
+      const firstCoord = activeCoords[0];
+
       const payload: any = {
         ...formData,
         coverImage: formData.coverImage || null,
-        collaborators: formData.collaborators || null,
-        collaboratorLogo: formData.collaboratorLogo || null,
+        collaborators: collabsString || formData.collaborators || null,
+        collaboratorLogo: firstLogo || formData.collaboratorLogo || null,
+        splitCollaborators: activeCollabs,
+        coordinatorName: firstCoord?.name || formData.coordinatorName || null,
+        coordinatorPhone: firstCoord?.phone || formData.coordinatorPhone || null,
+        coordinators: activeCoords,
         isPaid: formData.isPaid,
         ticketPrice: formData.ticketPrice ? Number(formData.ticketPrice) : 0,
-        coordinatorName: formData.coordinatorName || null,
-        coordinatorPhone: formData.coordinatorPhone || null,
         eventDate: new Date(formData.eventDate).toISOString(),
         registrationCapacity: formData.registrationCapacity ? Number(formData.registrationCapacity) : null,
         registrationEndDate: formData.registrationEndDate ? new Date(formData.registrationEndDate).toISOString() : null,
@@ -123,10 +134,12 @@ export const EventsManager: React.FC = () => {
       coverImage: '',
       collaborators: '',
       collaboratorLogo: '',
+      splitCollaborators: [],
       isPaid: false,
       ticketPrice: '',
       coordinatorName: '',
       coordinatorPhone: '',
+      coordinators: [],
       registrationUrl: '',
       enableInternalReg: false,
       registrationUploadLink: '',
@@ -140,6 +153,58 @@ export const EventsManager: React.FC = () => {
       featured: false,
       published: true,
     });
+  };
+
+  const handleAddCollaborator = () => {
+    setFormData((prev) => ({
+      ...prev,
+      splitCollaborators: [
+        ...prev.splitCollaborators,
+        { id: 'collab_' + Date.now(), name: '', logoUrl: '' },
+      ],
+    }));
+  };
+
+  const handleUpdateCollaborator = (id: string, key: keyof SplitCollaborator, value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      splitCollaborators: prev.splitCollaborators.map((c) =>
+        c.id === id ? { ...c, [key]: value } : c
+      ),
+    }));
+  };
+
+  const handleRemoveCollaborator = (id: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      splitCollaborators: prev.splitCollaborators.filter((c) => c.id !== id),
+    }));
+  };
+
+  const handleAddCoordinator = () => {
+    setFormData((prev) => ({
+      ...prev,
+      coordinators: [
+        ...prev.coordinators,
+        { id: 'coord_' + Date.now(), name: '', phone: '', role: 'Event Coordinator' },
+      ],
+    }));
+  };
+
+  const handleUpdateCoordinator = (id: string, key: keyof EventCoordinator, value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      coordinators: prev.coordinators.map((c) =>
+        c.id === id ? { ...c, [key]: value } : c
+      ),
+    }));
+  };
+
+  const handleRemoveCoordinator = (id: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      coordinators: prev.coordinators.filter((c) => c.id !== id),
+    }));
   };
 
   const handleAddField = () => {
@@ -202,6 +267,36 @@ export const EventsManager: React.FC = () => {
       }
     }
 
+    // Parse Split Collaborators
+    let loadedCollaborators: SplitCollaborator[] = [];
+    if (Array.isArray(item.splitCollaborators) && item.splitCollaborators.length > 0) {
+      loadedCollaborators = item.splitCollaborators;
+    } else if (item.collaborators) {
+      loadedCollaborators = item.collaborators
+        .split(',')
+        .map((s, idx) => ({
+          id: 'collab_' + idx,
+          name: s.trim(),
+          logoUrl: idx === 0 ? (item.collaboratorLogo || '') : '',
+        }))
+        .filter((c) => c.name);
+    }
+
+    // Parse Multiple Coordinators
+    let loadedCoordinators: EventCoordinator[] = [];
+    if (Array.isArray(item.coordinators) && item.coordinators.length > 0) {
+      loadedCoordinators = item.coordinators;
+    } else if (item.coordinatorName) {
+      loadedCoordinators = [
+        {
+          id: 'coord_0',
+          name: item.coordinatorName,
+          phone: item.coordinatorPhone || '',
+          role: 'Event Coordinator',
+        },
+      ];
+    }
+
     setFormData({
       title: item.title,
       slug: item.slug,
@@ -215,10 +310,12 @@ export const EventsManager: React.FC = () => {
       coverImage: item.coverImage || '',
       collaborators: item.collaborators || '',
       collaboratorLogo: item.collaboratorLogo || '',
+      splitCollaborators: loadedCollaborators,
       isPaid: item.isPaid || false,
       ticketPrice: item.ticketPrice ? String(item.ticketPrice) : '',
       coordinatorName: item.coordinatorName || '',
       coordinatorPhone: item.coordinatorPhone || '',
+      coordinators: loadedCoordinators,
       registrationUrl: item.registrationUrl || '',
       enableInternalReg: item.enableInternalReg || false,
       registrationUploadLink: item.registrationUploadLink || '',
@@ -480,42 +577,171 @@ export const EventsManager: React.FC = () => {
                 required
               />
 
-              {/* Collaborators & Logo Section */}
+              {/* Collaborators & Logos Section (URL only - does not overload storage) */}
               <div className="p-3.5 bg-blue-50/70 border border-blue-200 rounded-xl space-y-3">
-                <h5 className="text-xs font-bold text-blue-950 uppercase tracking-wider">Official Collaborator / Co-Host (Optional)</h5>
-                <Input
-                  label="Collaborator Organization Name"
-                  value={formData.collaborators}
-                  onChange={(e) => setFormData({ ...formData, collaborators: e.target.value })}
-                  placeholder="e.g. Government of Kerala, AICTE, IEEE"
-                />
-                <ImageUpload
-                  label="Collaborator / Partner Logo (Optional)"
-                  value={formData.collaboratorLogo}
-                  onChange={(url) => setFormData({ ...formData, collaboratorLogo: url })}
-                  folder="collaborators"
-                  aspectRatio="auto"
-                  helperText="Upload official logo (PNG/JPG/SVG) or paste image URL"
-                />
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h5 className="text-xs font-bold text-blue-950 uppercase tracking-wider">
+                      Official Collaborators / Co-Hosts (Optional)
+                    </h5>
+                    <p className="text-[11px] text-blue-800/80">
+                      Add each partner organization and their logo URL (URL upload only, zero storage usage).
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAddCollaborator}
+                    className="text-[11px] h-7 px-2.5 bg-white border-blue-300 text-blue-900 hover:bg-blue-100"
+                  >
+                    <Plus className="w-3.5 h-3.5 mr-1" /> Add Partner
+                  </Button>
+                </div>
+
+                {formData.splitCollaborators.length === 0 ? (
+                  <div className="p-3 bg-white/80 rounded-lg border border-dashed border-blue-200 text-center">
+                    <span className="text-xs text-blue-700">No individual collaborators added yet.</span>
+                    <button
+                      type="button"
+                      onClick={handleAddCollaborator}
+                      className="ml-2 text-xs font-bold text-blue-900 underline hover:text-blue-950"
+                    >
+                      + Add One
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {formData.splitCollaborators.map((collab, idx) => (
+                      <div
+                        key={collab.id}
+                        className="p-3 bg-white rounded-lg border border-blue-200 space-y-2 relative shadow-2xs"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-blue-800 uppercase tracking-wider">
+                            Partner #{idx + 1}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveCollaborator(collab.id)}
+                            className="text-slate-400 hover:text-red-600 transition p-1"
+                            title="Remove Partner"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                          <Input
+                            label="Organization Name *"
+                            value={collab.name}
+                            onChange={(e) => handleUpdateCollaborator(collab.id, 'name', e.target.value)}
+                            placeholder="e.g. Government of Kerala / AICTE"
+                            required
+                          />
+                          <Input
+                            label="Logo Image URL (URL only) *"
+                            value={collab.logoUrl || ''}
+                            onChange={(e) => handleUpdateCollaborator(collab.id, 'logoUrl', e.target.value)}
+                            placeholder="https://... or /assets/logo.png"
+                            helperText="URL only — does not use server disk storage."
+                          />
+                        </div>
+                        {collab.logoUrl && (
+                          <div className="flex items-center gap-2 pt-1">
+                            <span className="text-[10px] text-slate-500 font-semibold">Logo Preview:</span>
+                            <img
+                              src={collab.logoUrl}
+                              alt={collab.name}
+                              className="h-7 max-w-[100px] object-contain rounded bg-slate-50 p-1 border border-slate-200"
+                              onError={(e) => (e.currentTarget.style.display = 'none')}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              {/* Coordinator Contact For Enquiries (Fixed 2 columns) */}
+              {/* Event Coordinators for Enquiries (Supports Multiple Coordinators) */}
               <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
-                <h5 className="text-xs font-bold text-slate-800 uppercase tracking-wider">For Enquiries Contact Coordinator</h5>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <Input
-                    label="Coordinator Full Name"
-                    value={formData.coordinatorName}
-                    onChange={(e) => setFormData({ ...formData, coordinatorName: e.target.value })}
-                    placeholder="e.g. Dr. Sarah Jenkins / Arjun V."
-                  />
-                  <Input
-                    label="Coordinator Phone / WhatsApp"
-                    value={formData.coordinatorPhone}
-                    onChange={(e) => setFormData({ ...formData, coordinatorPhone: e.target.value })}
-                    placeholder="e.g. +91 98765 43210"
-                  />
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h5 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                      Event Coordinators (For Enquiries)
+                    </h5>
+                    <p className="text-[11px] text-slate-500">
+                      Add faculty, student, or committee coordinators with direct call &amp; WhatsApp contacts.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAddCoordinator}
+                    className="text-[11px] h-7 px-2.5 bg-white border-slate-300 text-slate-800 hover:bg-slate-100"
+                  >
+                    <Plus className="w-3.5 h-3.5 mr-1" /> Add Coordinator
+                  </Button>
                 </div>
+
+                {formData.coordinators.length === 0 ? (
+                  <div className="p-3 bg-white rounded-lg border border-dashed border-slate-300 text-center">
+                    <span className="text-xs text-slate-500">No coordinator added yet.</span>
+                    <button
+                      type="button"
+                      onClick={handleAddCoordinator}
+                      className="ml-2 text-xs font-bold text-slate-700 underline hover:text-slate-900"
+                    >
+                      + Add Coordinator
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {formData.coordinators.map((coord, idx) => (
+                      <div
+                        key={coord.id}
+                        className="p-3 bg-white rounded-lg border border-slate-200 space-y-2 relative shadow-2xs"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                            Coordinator #{idx + 1}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveCoordinator(coord.id)}
+                            className="text-slate-400 hover:text-red-600 transition p-1"
+                            title="Remove Coordinator"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                          <Input
+                            label="Full Name *"
+                            value={coord.name}
+                            onChange={(e) => handleUpdateCoordinator(coord.id, 'name', e.target.value)}
+                            placeholder="e.g. Dr. Sarah Jenkins"
+                            required
+                          />
+                          <Input
+                            label="Phone / WhatsApp *"
+                            value={coord.phone}
+                            onChange={(e) => handleUpdateCoordinator(coord.id, 'phone', e.target.value)}
+                            placeholder="e.g. +91 98765 43210"
+                            required
+                          />
+                          <Input
+                            label="Role / Designation"
+                            value={coord.role || ''}
+                            onChange={(e) => handleUpdateCoordinator(coord.id, 'role', e.target.value)}
+                            placeholder="e.g. Faculty / Student Lead"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Event Pricing & Fee Section */}

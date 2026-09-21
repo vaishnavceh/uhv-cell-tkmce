@@ -197,6 +197,8 @@ export class EventsService {
         ticketPrice: dto.ticketPrice ? Number(dto.ticketPrice) : 0,
         coordinatorName: dto.coordinatorName || null,
         coordinatorPhone: dto.coordinatorPhone || null,
+        coordinators: dto.coordinators || [],
+        splitCollaborators: dto.splitCollaborators || [],
         registrationUrl: dto.registrationUrl || null,
         enableInternalReg: dto.enableInternalReg ?? false,
         registrationUploadLink: dto.registrationUploadLink || null,
@@ -261,6 +263,12 @@ export class EventsService {
     }
     if (dto.coordinatorPhone !== undefined) {
       data.coordinatorPhone = dto.coordinatorPhone || null;
+    }
+    if (dto.coordinators !== undefined) {
+      data.coordinators = dto.coordinators || [];
+    }
+    if (dto.splitCollaborators !== undefined) {
+      data.splitCollaborators = dto.splitCollaborators || [];
     }
 
     const updated = await this.prisma.event.update({

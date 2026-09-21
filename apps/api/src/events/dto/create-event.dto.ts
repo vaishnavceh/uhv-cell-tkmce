@@ -90,6 +90,14 @@ export class CreateEventDto {
   @IsString()
   coordinatorPhone?: string;
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  coordinators?: any;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  splitCollaborators?: any;
+
   @ApiPropertyOptional({ example: 'https://fdp-si.aicte-india.org/' })
   @IsOptional()
   @IsString()
@@ -228,6 +236,14 @@ export class UpdateEventDto {
   @IsOptional()
   @IsString()
   coordinatorPhone?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  coordinators?: any;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  splitCollaborators?: any;
 
   @ApiPropertyOptional()
   @IsOptional()
