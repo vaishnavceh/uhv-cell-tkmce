@@ -10,7 +10,7 @@ export class LocalStorageService implements IStorageService {
   private readonly uploadDir: string;
 
   constructor() {
-    this.uploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads');
+    this.uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, '..', '..', 'uploads');
     if (!fs.existsSync(this.uploadDir)) {
       fs.mkdirSync(this.uploadDir, { recursive: true });
     }
