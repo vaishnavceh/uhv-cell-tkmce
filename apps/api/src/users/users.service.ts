@@ -61,6 +61,14 @@ export class UsersService {
       throw new ConflictException(`User with email ${dto.email} already exists`);
     }
 
+    // Resolve role by name
+    const role = await this.prisma.role.findFirst({
+      where: { name: dto.roleName as any },
+    });
+    if (!role) {
+      throw new NotFoundException(`Role '${dto.roleName}' not found`);
+    }
+
     const passwordHash = await bcrypt.hash(dto.password, 12);
 
     const user = await this.prisma.user.create({
@@ -69,7 +77,7 @@ export class UsersService {
         passwordHash,
         firstName: dto.firstName,
         lastName: dto.lastName,
-        roleId: dto.roleId,
+        roleId: role.id,
         isActive: dto.isActive ?? true,
       },
       select: {
@@ -99,9 +107,18 @@ export class UsersService {
     const data: any = {
       firstName: dto.firstName,
       lastName: dto.lastName,
-      roleId: dto.roleId,
       isActive: dto.isActive,
     };
+
+    if (dto.roleName) {
+      const role = await this.prisma.role.findFirst({
+        where: { name: dto.roleName as any },
+      });
+      if (!role) {
+        throw new NotFoundException(`Role '${dto.roleName}' not found`);
+      }
+      data.roleId = role.id;
+    }
 
     if (dto.password) {
       data.passwordHash = await bcrypt.hash(dto.password, 12);

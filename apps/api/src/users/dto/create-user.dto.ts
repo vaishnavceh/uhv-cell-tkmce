@@ -23,10 +23,10 @@ export class CreateUserDto {
   @IsNotEmpty()
   lastName: string;
 
-  @ApiProperty({ description: 'Role UUID' })
+  @ApiProperty({ description: 'Role name e.g. EDITOR, ADMIN, SUPER_ADMIN, CONTENT_MANAGER' })
   @IsString()
   @IsNotEmpty()
-  roleId: string;
+  roleName: string;
 
   @ApiPropertyOptional({ default: true })
   @IsOptional()
@@ -48,7 +48,7 @@ export class UpdateUserDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  roleId?: string;
+  roleName?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
