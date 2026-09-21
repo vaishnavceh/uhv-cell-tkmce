@@ -74,7 +74,7 @@ export class ObjectivesController {
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleName.SUPER_ADMIN, RoleName.ADMIN)
+  @Roles(RoleName.SUPER_ADMIN, RoleName.ADMIN, RoleName.EDITOR)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete an institutional objective' })
   async removeObjective(

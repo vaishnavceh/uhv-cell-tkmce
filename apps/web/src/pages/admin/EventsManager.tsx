@@ -77,6 +77,9 @@ export const EventsManager: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['admin-events'] });
       setDeleteId(null);
     },
+    onError: () => {
+      setDeleteId(null);
+    },
   });
 
   const resetForm = () => {

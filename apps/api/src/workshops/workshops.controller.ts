@@ -75,7 +75,7 @@ export class WorkshopsController {
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleName.SUPER_ADMIN, RoleName.ADMIN)
+  @Roles(RoleName.SUPER_ADMIN, RoleName.ADMIN, RoleName.EDITOR, RoleName.CONTENT_MANAGER)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete a workshop' })
   async removeWorkshop(

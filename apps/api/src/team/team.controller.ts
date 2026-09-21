@@ -73,7 +73,7 @@ export class TeamController {
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleName.SUPER_ADMIN, RoleName.ADMIN)
+  @Roles(RoleName.SUPER_ADMIN, RoleName.ADMIN, RoleName.EDITOR)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete a team member' })
   async removeTeamMember(

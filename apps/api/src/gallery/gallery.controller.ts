@@ -74,7 +74,7 @@ export class GalleryController {
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleName.SUPER_ADMIN, RoleName.ADMIN)
+  @Roles(RoleName.SUPER_ADMIN, RoleName.ADMIN, RoleName.EDITOR, RoleName.CONTENT_MANAGER)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete an album and its photos' })
   async removeAlbum(
