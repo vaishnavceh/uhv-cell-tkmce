@@ -22,6 +22,8 @@ services:
         generateValue: true
       - key: CORS_ORIGIN
         value: "*"
+      - key: UPLOAD_DIR
+        value: /opt/render/project/src/uploads
       - key: ADMIN_EMAIL
         value: admin@tkmce.ac.in
       - key: ADMIN_PASSWORD
