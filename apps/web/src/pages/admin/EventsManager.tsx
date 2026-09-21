@@ -743,9 +743,13 @@ const EventRegistrationsViewer: React.FC<{ eventId: string | null; event?: Event
 
     const headers = [
       'Registration ID',
-      'Full Name',
+      'Ticket Type',
+      'Group Size',
+      'Team / Group Name',
+      'Lead Full Name',
       'Email',
       'Phone',
+      'Group Members',
       'Designation / Role',
       ...customFields.map((f) => f.label || f.id),
       'Upload Reference',
@@ -755,9 +759,13 @@ const EventRegistrationsViewer: React.FC<{ eventId: string | null; event?: Event
 
     const rows = registrations.map((reg) => [
       reg.id,
+      reg.ticketType || (reg.groupSize > 1 ? 'GROUP' : 'INDIVIDUAL'),
+      reg.groupSize || 1,
+      `"${(reg.groupName || '').replace(/"/g, '""')}"`,
       `"${(reg.fullName || '').replace(/"/g, '""')}"`,
       `"${(reg.email || '').replace(/"/g, '""')}"`,
       `"${(reg.phone || '').replace(/"/g, '""')}"`,
+      `"${(Array.isArray(reg.groupMembers) ? reg.groupMembers.join('; ') : '').replace(/"/g, '""')}"`,
       `"${(reg.designation || '').replace(/"/g, '""')}"`,
       ...customFields.map((f) => {
         const val = reg.customData?.[f.id] || reg.customData?.[f.label] || '';
@@ -786,7 +794,7 @@ const EventRegistrationsViewer: React.FC<{ eventId: string | null; event?: Event
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 p-4 rounded-lg border border-slate-200">
         <div>
           <h3 className="text-sm font-bold text-slate-800">Registered Participants {event?.title ? `— ${event.title}` : ''}</h3>
-          <p className="text-xs text-slate-500">Attendee data with automatic approvals and dynamic field columns.</p>
+          <p className="text-xs text-slate-500">Attendee data with automatic approvals, group passes, and dynamic fields.</p>
         </div>
         <div className="flex items-center gap-3">
           <Button
@@ -808,7 +816,7 @@ const EventRegistrationsViewer: React.FC<{ eventId: string | null; event?: Event
         <Table>
           <Thead>
             <Tr>
-              <Th>Participant Name</Th>
+              <Th>Participant / Group</Th>
               <Th>Contact Details</Th>
               {customFields.map((f) => (
                 <Th key={f.id}>{f.label || 'Custom Field'}</Th>
@@ -833,6 +841,22 @@ const EventRegistrationsViewer: React.FC<{ eventId: string | null; event?: Event
                   <Td>
                     <div className="text-xs font-bold text-slate-800">{reg.fullName}</div>
                     {reg.designation && <div className="text-[10px] text-slate-500">{reg.designation}</div>}
+                    {reg.groupSize && reg.groupSize > 1 ? (
+                      <div className="mt-1">
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-100 text-blue-800">
+                          👥 Group of {reg.groupSize} {reg.groupName ? `• ${reg.groupName}` : ''}
+                        </span>
+                        {Array.isArray(reg.groupMembers) && reg.groupMembers.length > 0 && (
+                          <div className="text-[10px] text-slate-500 mt-0.5 max-w-xs truncate" title={reg.groupMembers.join(', ')}>
+                            + {reg.groupMembers.join(', ')}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-[9px] text-slate-400 font-medium mt-0.5 block">
+                        👤 Individual
+                      </span>
+                    )}
                   </Td>
                   <Td>
                     <div className="text-xs text-slate-700">{reg.email}</div>

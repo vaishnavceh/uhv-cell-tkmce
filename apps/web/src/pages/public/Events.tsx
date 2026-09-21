@@ -4,7 +4,7 @@ import { apiClient } from '../../api/client';
 import { EventItem, EventStatus } from '@uhv/shared-types';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { useDebounce } from '../../hooks/useDebounce';
-import { Calendar, Clock, MapPin, Search, ArrowRight, ExternalLink } from 'lucide-react';
+import { Calendar, Clock, MapPin, Search, ArrowRight, ExternalLink, Users, Building2 } from 'lucide-react';
 import { formatDate } from '../../utils/cn';
 import { Link } from 'react-router-dom';
 import { Input } from '../../components/ui/Input';
@@ -128,11 +128,22 @@ export const Events: React.FC = () => {
                   <h3 className="text-lg font-bold text-institutional-950 mb-2 leading-snug">
                     {ev.title}
                   </h3>
+
+                  {/* Prominent Collaborator Details in Event Center */}
                   {ev.collaborators && (
-                    <div className="mb-2 text-[11px] font-semibold text-emerald-800 bg-emerald-50/90 px-2 py-0.5 rounded border border-emerald-200 inline-block">
-                      🤝 With: {ev.collaborators}
+                    <div className="mb-3 px-3 py-2 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50/70 border border-blue-200/80 flex items-start gap-2.5">
+                      <Building2 className="w-4 h-4 text-blue-700 shrink-0 mt-0.5" />
+                      <div className="min-w-0">
+                        <span className="text-[9px] uppercase font-extrabold tracking-wider text-blue-700 block">
+                          Official Collaborator / Co-Host
+                        </span>
+                        <span className="text-xs font-black text-blue-950 truncate block">
+                          {ev.collaborators}
+                        </span>
+                      </div>
                     </div>
                   )}
+
                   <p className="text-xs text-slate-600 mb-4 line-clamp-3 leading-relaxed">
                     {ev.shortDescription || ev.description}
                   </p>
@@ -153,6 +164,47 @@ export const Events: React.FC = () => {
                       <span className="truncate">{ev.venue}</span>
                     </div>
                   </div>
+
+                  {/* Remaining Registrations Indicator in Event Center */}
+                  {ev.enableInternalReg && !ev.registrationNotOpened && !ev.isRegistrationClosed && (
+                    <div className="mt-3 pt-3 border-t border-slate-100">
+                      {ev.registrationCapacity ? (
+                        ev.remainingCapacity !== null && ev.remainingCapacity !== undefined ? (
+                          ev.remainingCapacity > 0 ? (
+                            <div className="p-2 rounded-lg bg-emerald-50/90 border border-emerald-200 flex items-center justify-between text-xs">
+                              <span className="font-semibold text-emerald-950 flex items-center gap-1.5">
+                                <Users className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                                Remaining Seats:
+                              </span>
+                              <span className={`font-black px-2 py-0.5 rounded text-[11px] ${
+                                ev.remainingCapacity <= 5 ? 'bg-amber-200 text-amber-900 animate-pulse' : 'bg-emerald-200 text-emerald-900'
+                              }`}>
+                                {ev.remainingCapacity} left / {ev.registrationCapacity}
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="p-2 rounded-lg bg-red-50 border border-red-200 flex items-center justify-between text-xs text-red-800 font-bold">
+                              <span className="flex items-center gap-1.5">
+                                <Users className="w-3.5 h-3.5 shrink-0" /> Registration:
+                              </span>
+                              <span className="bg-red-200 px-2 py-0.5 rounded text-[11px] font-black">
+                                Sold Out (Full)
+                              </span>
+                            </div>
+                          )
+                        ) : null
+                      ) : (
+                        <div className="p-2 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-between text-xs text-slate-700">
+                          <span className="font-semibold flex items-center gap-1.5">
+                            <Users className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> Open Seats:
+                          </span>
+                          <span className="font-bold text-emerald-700 text-[11px]">
+                            Unlimited Capacity
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">

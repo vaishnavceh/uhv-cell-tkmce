@@ -144,6 +144,8 @@ export interface EventItem {
   status: EventStatus;
   featured: boolean;
   published: boolean;
+  registeredCount?: number;
+  remainingCapacity?: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -171,6 +173,10 @@ export interface EventRegistration {
   institution?: string | null;
   designation?: string | null;
   uploadReference?: string | null;
+  ticketType?: 'INDIVIDUAL' | 'GROUP' | string;
+  groupSize?: number;
+  groupName?: string | null;
+  groupMembers?: string[] | any;
   customData?: Record<string, any>;
   status: RegistrationStatus;
   createdAt: string;

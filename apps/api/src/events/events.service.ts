@@ -56,11 +56,30 @@ export class EventsService {
         skip,
         take: limit,
         orderBy: { eventDate: 'desc' },
+        include: {
+          registrations: {
+            where: { status: { in: ['APPROVED', 'PENDING'] } },
+            select: { groupSize: true },
+          },
+        },
       }),
     ]);
 
+    const mapped = data.map((ev: any) => {
+      const registeredCount = (ev.registrations || []).reduce((sum: number, r: any) => sum + (r.groupSize || 1), 0);
+      const remainingCapacity = ev.registrationCapacity !== null && ev.registrationCapacity !== undefined
+        ? Math.max(0, ev.registrationCapacity - registeredCount)
+        : null;
+      const { registrations, ...rest } = ev;
+      return {
+        ...rest,
+        registeredCount,
+        remainingCapacity,
+      };
+    });
+
     return {
-      data,
+      data: mapped,
       meta: {
         page,
         limit,
@@ -71,24 +90,55 @@ export class EventsService {
   }
 
   async findFeatured() {
-    return this.prisma.event.findMany({
+    const data = await this.prisma.event.findMany({
       where: {
         published: true,
         featured: true,
       },
       take: 4,
       orderBy: { eventDate: 'asc' },
+      include: {
+        registrations: {
+          where: { status: { in: ['APPROVED', 'PENDING'] } },
+          select: { groupSize: true },
+        },
+      },
+    });
+
+    return data.map((ev: any) => {
+      const registeredCount = (ev.registrations || []).reduce((sum: number, r: any) => sum + (r.groupSize || 1), 0);
+      const remainingCapacity = ev.registrationCapacity !== null && ev.registrationCapacity !== undefined
+        ? Math.max(0, ev.registrationCapacity - registeredCount)
+        : null;
+      const { registrations, ...rest } = ev;
+      return {
+        ...rest,
+        registeredCount,
+        remainingCapacity,
+      };
     });
   }
 
   async findBySlug(slug: string) {
-    let event = await this.prisma.event.findUnique({
+    let event: any = await this.prisma.event.findUnique({
       where: { slug },
+      include: {
+        registrations: {
+          where: { status: { in: ['APPROVED', 'PENDING'] } },
+          select: { groupSize: true },
+        },
+      },
     });
     if (!event) {
       try {
         event = await this.prisma.event.findUnique({
           where: { id: slug },
+          include: {
+            registrations: {
+              where: { status: { in: ['APPROVED', 'PENDING'] } },
+              select: { groupSize: true },
+            },
+          },
         });
       } catch {
         // Not a valid UUID, ignore
@@ -97,7 +147,18 @@ export class EventsService {
     if (!event) {
       throw new NotFoundException(`Event with slug or ID "${slug}" not found`);
     }
-    return event;
+
+    const registeredCount = (event.registrations || []).reduce((sum: number, r: any) => sum + (r.groupSize || 1), 0);
+    const remainingCapacity = event.registrationCapacity !== null && event.registrationCapacity !== undefined
+      ? Math.max(0, event.registrationCapacity - registeredCount)
+      : null;
+
+    const { registrations, ...rest } = event;
+    return {
+      ...rest,
+      registeredCount,
+      remainingCapacity,
+    };
   }
 
   async findOne(id: string) {
@@ -219,12 +280,9 @@ export class EventsService {
     const event = await this.prisma.event.findUnique({
       where: { id: eventId },
       include: {
-        _count: {
-          select: {
-            registrations: {
-              where: { status: { in: ['APPROVED', 'PENDING'] } },
-            },
-          },
+        registrations: {
+          where: { status: { in: ['APPROVED', 'PENDING'] } },
+          select: { groupSize: true },
         },
       },
     });
@@ -249,8 +307,19 @@ export class EventsService {
       throw new ConflictException('Registration deadline has passed.');
     }
 
-    if (event.registrationCapacity && event._count.registrations >= event.registrationCapacity) {
-      throw new ConflictException('Registration has reached maximum capacity.');
+    const requestedSeats = Math.max(1, Number(dto.groupSize) || 1);
+    const currentSeatsTaken = (event.registrations || []).reduce((sum: number, r: any) => sum + (r.groupSize || 1), 0);
+
+    if (event.registrationCapacity) {
+      const remaining = event.registrationCapacity - currentSeatsTaken;
+      if (remaining <= 0) {
+        throw new ConflictException('Registration has reached maximum capacity.');
+      }
+      if (requestedSeats > remaining) {
+        throw new ConflictException(
+          `Only ${remaining} seat${remaining === 1 ? '' : 's'} remaining. Cannot register a group of ${requestedSeats}.`
+        );
+      }
     }
 
     return this.prisma.eventRegistration.create({
@@ -262,6 +331,10 @@ export class EventsService {
         institution: dto.institution || null,
         designation: dto.designation || null,
         uploadReference: dto.uploadReference || null,
+        ticketType: dto.ticketType || (requestedSeats > 1 ? 'GROUP' : 'INDIVIDUAL'),
+        groupSize: requestedSeats,
+        groupName: dto.groupName || null,
+        groupMembers: dto.groupMembers || [],
         customData: dto.customData || {},
         status: 'APPROVED',
       },

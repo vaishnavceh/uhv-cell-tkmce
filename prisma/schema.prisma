@@ -161,6 +161,10 @@ model EventRegistration {
   institution     String?
   designation     String?
   uploadReference String?
+  ticketType      String             @default("INDIVIDUAL")
+  groupSize       Int                @default(1)
+  groupName       String?
+  groupMembers    Json               @default("[]")
   customData      Json               @default("{}")
   status          RegistrationStatus @default(APPROVED)
   createdAt       DateTime           @default(now())

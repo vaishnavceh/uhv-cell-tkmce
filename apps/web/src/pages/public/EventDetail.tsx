@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../../api/client';
 import { EventItem, RegistrationFieldDefinition } from '@uhv/shared-types';
 import { usePageTitle } from '../../hooks/usePageTitle';
-import { Calendar, Clock, MapPin, ArrowLeft, ExternalLink, ShieldCheck, Share2, Hourglass, Download, Building2 } from 'lucide-react';
+import { Calendar, Clock, MapPin, ArrowLeft, ExternalLink, ShieldCheck, Share2, Hourglass, Download, Building2, Users } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { formatDate } from '../../utils/cn';
 import { Button } from '../../components/ui/Button';
@@ -99,12 +99,18 @@ export const EventDetail: React.FC = () => {
             )}
 
             {event.collaborators && (
-              <div className="flex items-center gap-2.5 p-3 rounded-lg bg-emerald-50/70 border border-emerald-200 text-xs text-emerald-950">
-                <Building2 className="w-4 h-4 text-emerald-700 shrink-0" />
-                <span>
-                  <strong className="font-bold">Organized in collaboration with:</strong>{' '}
-                  <span className="font-semibold text-emerald-900">{event.collaborators}</span>
-                </span>
+              <div className="p-4 rounded-xl bg-gradient-to-r from-blue-50 via-slate-50 to-emerald-50/70 border border-blue-200/80 flex items-center gap-3.5 shadow-2xs">
+                <div className="w-10 h-10 rounded-xl bg-blue-700 text-white flex items-center justify-center shrink-0 shadow-sm">
+                  <Building2 className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <span className="text-[10px] uppercase font-extrabold tracking-wider text-blue-700 block">
+                    Official Event Partner &amp; Co-Host
+                  </span>
+                  <span className="text-sm sm:text-base font-black text-slate-900 truncate block">
+                    {event.collaborators}
+                  </span>
+                </div>
               </div>
             )}
           </div>
@@ -171,6 +177,40 @@ export const EventDetail: React.FC = () => {
             ) : event.enableInternalReg ? (
               isRegistrationOpen ? (
                 <div className="space-y-4">
+                  {/* Capacity & Remaining Registrations Banner in Event Center */}
+                  {event.registrationCapacity && (
+                    <div className="p-3.5 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl text-xs flex flex-wrap items-center justify-between gap-3 print:hidden">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold shrink-0">
+                          <Users className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <span className="text-[10px] uppercase font-extrabold text-emerald-700 tracking-wider block">
+                            Registration Capacity &amp; Seats Left
+                          </span>
+                          <span className="font-bold text-emerald-950 text-sm">
+                            {event.remainingCapacity !== null && event.remainingCapacity !== undefined ? (
+                              event.remainingCapacity > 0 ? (
+                                <>
+                                  <strong className="text-base text-emerald-950 font-black">{event.remainingCapacity}</strong> of {event.registrationCapacity} seats remaining
+                                </>
+                              ) : (
+                                <span className="text-red-700 font-bold">Sold Out / Maximum Capacity Reached</span>
+                              )
+                            ) : (
+                              `${event.registrationCapacity} total seats available`
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                      {event.remainingCapacity !== null && event.remainingCapacity !== undefined && event.remainingCapacity <= 10 && event.remainingCapacity > 0 && (
+                        <span className="px-2.5 py-1 rounded-full bg-amber-100 border border-amber-300 text-amber-900 font-extrabold text-[11px] animate-pulse">
+                          🔥 Only {event.remainingCapacity} seats left
+                        </span>
+                      )}
+                    </div>
+                  )}
+
                   {event.registrationEndDate && (
                     <div className="p-3 bg-emerald-50/80 border border-emerald-200 rounded-lg text-xs text-emerald-800 flex items-center justify-between print:hidden">
                       <span className="font-semibold">⏰ Registration Deadline:</span>
@@ -221,19 +261,37 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
   });
 
   const [customData, setCustomData] = React.useState<Record<string, any>>({});
+  const [ticketType, setTicketType] = React.useState<'INDIVIDUAL' | 'GROUP'>('INDIVIDUAL');
+  const [groupName, setGroupName] = React.useState('');
+  const [groupSize, setGroupSize] = React.useState(2);
+  const [groupMembers, setGroupMembers] = React.useState<string[]>(['']);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [successData, setSuccessData] = React.useState<any>(null);
   const [isDownloadingPng, setIsDownloadingPng] = React.useState(false);
   const [qrDataUrl, setQrDataUrl] = React.useState<string>('');
   const ticketRef = React.useRef<HTMLDivElement>(null);
 
+  const handleGroupSizeChange = (newSize: number) => {
+    setGroupSize(newSize);
+    const additionalCount = Math.max(1, newSize - 1);
+    setGroupMembers((prev) => {
+      const next = [...prev];
+      while (next.length < additionalCount) next.push('');
+      return next.slice(0, additionalCount);
+    });
+  };
+
   // Pre-fetch QR Code to Data URL for instant, CORS-free PNG snapshot generation
   React.useEffect(() => {
     let isMounted = true;
     if (successData) {
       const regCode = `UHV-${(successData.id || 'TICKET').slice(0, 8).toUpperCase()}`;
+      const isGroup = successData.ticketType === 'GROUP' || (successData.groupSize && successData.groupSize > 1);
+      const membersText = isGroup && Array.isArray(successData.groupMembers) && successData.groupMembers.length > 0
+        ? `\nMEMBERS: ${successData.fullName} (Lead), ${successData.groupMembers.join(', ')}`
+        : '';
       const url = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
-        `TKMCE UHV EVENT: ${event.title}\nPASS: ${regCode}\nNAME: ${successData.fullName}`
+        `TKMCE UHV EVENT: ${event.title}\nPASS: ${regCode}\nTYPE: ${isGroup ? `GROUP PASS (${successData.groupSize} ATTENDEES)` : 'INDIVIDUAL PASS'}\nNAME: ${successData.fullName}${isGroup && successData.groupName ? `\nTEAM: ${successData.groupName}` : ''}${membersText}`
       )}`;
       fetch(url)
         .then((res) => res.blob())
@@ -257,10 +315,36 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (ticketType === 'GROUP') {
+      if (!groupName.trim()) {
+        alert('Please enter a Group / Team Name.');
+        return;
+      }
+      for (let i = 0; i < groupMembers.length; i++) {
+        if (!groupMembers[i].trim()) {
+          alert(`Please enter the full name for Member #${i + 2}.`);
+          return;
+        }
+      }
+    }
+
+    if (event.remainingCapacity !== null && event.remainingCapacity !== undefined) {
+      const requested = ticketType === 'GROUP' ? groupSize : 1;
+      if (requested > event.remainingCapacity) {
+        alert(`Only ${event.remainingCapacity} seat${event.remainingCapacity === 1 ? '' : 's'} remaining. Cannot book ${requested} tickets.`);
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     try {
       const payload = {
         ...formData,
+        ticketType,
+        groupSize: ticketType === 'GROUP' ? groupSize : 1,
+        groupName: ticketType === 'GROUP' ? groupName.trim() : undefined,
+        groupMembers: ticketType === 'GROUP' ? groupMembers.map((m) => m.trim()) : [],
         customData,
       };
       const res = await apiClient.post(`/events/${event.id}/register`, payload);
@@ -303,6 +387,8 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
 
   if (successData) {
     const regCode = `UHV-${(successData.id || 'TICKET').slice(0, 8).toUpperCase()}`;
+    const isGroup = successData.ticketType === 'GROUP' || (successData.groupSize && successData.groupSize > 1);
+    const membersList: string[] = Array.isArray(successData.groupMembers) ? successData.groupMembers : [];
     const fallbackQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
       `TKMCE UHV EVENT: ${event.title}\nPASS: ${regCode}\nNAME: ${successData.fullName}`
     )}`;
@@ -337,8 +423,14 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-100 text-emerald-700 mx-auto">
             <ShieldCheck className="w-6 h-6" />
           </div>
-          <h3 className="text-xl font-black text-slate-900">Registration Confirmed!</h3>
-          <p className="text-xs text-slate-500">Your entry pass has been issued. Download your ticket as a PNG image or print below.</p>
+          <h3 className="text-xl font-black text-slate-900">
+            {isGroup ? 'Group Registration Confirmed!' : 'Registration Confirmed!'}
+          </h3>
+          <p className="text-xs text-slate-500">
+            {isGroup
+              ? `Your official group pass for ${successData.groupSize || 2} attendees has been issued. Download your ticket as PNG or print below.`
+              : 'Your entry pass has been issued. Download your ticket as a PNG image or print below.'}
+          </p>
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
             <Button
               onClick={handleDownloadPng}
@@ -368,10 +460,14 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
                   uploadReference: '',
                 });
                 setCustomData({});
+                setTicketType('INDIVIDUAL');
+                setGroupName('');
+                setGroupSize(2);
+                setGroupMembers(['']);
               }}
               className="text-xs"
             >
-              Register Another Person
+              Register Another Person / Group
             </Button>
           </div>
         </div>
@@ -402,7 +498,7 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
                     </span>
                   </div>
                   <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded bg-emerald-950/80 border border-emerald-500/30 text-emerald-300 shrink-0">
-                    Official Entry Pass
+                    {isGroup ? `Official Group Pass (${successData.groupSize} Attendees)` : 'Official Entry Pass'}
                   </span>
                 </div>
 
@@ -440,13 +536,21 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
               <div className="pt-4 border-t border-slate-800/80">
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-left">
                   <div>
-                    <span className="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">Attendee</span>
+                    <span className="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">
+                      {isGroup ? 'Team Lead' : 'Attendee'}
+                    </span>
                     <span className="text-xs font-extrabold text-white truncate block">{successData.fullName}</span>
                   </div>
                   <div>
                     <span className="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">Contact</span>
                     <span className="text-xs text-slate-300 truncate block">{successData.email}</span>
                   </div>
+                  {isGroup && successData.groupName && (
+                    <div>
+                      <span className="text-[9px] uppercase font-bold text-blue-400 block tracking-wider">Team / Group</span>
+                      <span className="text-xs font-black text-blue-200 truncate block">{successData.groupName}</span>
+                    </div>
+                  )}
                   {/* Dynamically render custom field answers on ticket */}
                   {customFields.map((f) => {
                     const val = customData[f.id] || customData[f.label];
@@ -459,6 +563,25 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
                     );
                   })}
                 </div>
+
+                {/* Group Members List on Ticket Pass */}
+                {isGroup && membersList.length > 0 && (
+                  <div className="mt-3 pt-2.5 border-t border-slate-800/80 text-left">
+                    <span className="text-[9px] uppercase font-bold text-slate-400 block tracking-wider mb-1">
+                      Group Attendees ({successData.groupSize || (membersList.length + 1)} Total: Lead + {membersList.length} Members):
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-950/70 border border-emerald-700/50 text-emerald-300 font-bold">
+                        1. {successData.fullName} (Lead)
+                      </span>
+                      {membersList.map((member, idx) => (
+                        <span key={idx} className="text-[10px] px-2 py-0.5 rounded bg-slate-800/80 border border-slate-700 text-slate-200 font-medium">
+                          {idx + 2}. {member}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -474,11 +597,16 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
               {/* Stub Header */}
               <div className="text-center w-full">
                 <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400 block">
-                  ADMIT ONE
+                  {isGroup ? `ADMIT ${successData.groupSize || 2}` : 'ADMIT ONE'}
                 </span>
                 <span className="font-mono text-xs font-bold text-slate-300 block tracking-wider mt-0.5">
                   {regCode}
                 </span>
+                {isGroup && (
+                  <span className="text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-emerald-950/90 text-emerald-300 border border-emerald-500/30 inline-block mt-0.5">
+                    Group Pass ({successData.groupSize || 2} Pax)
+                  </span>
+                )}
                 {event.collaborators && (
                   <span className="text-[8px] font-bold text-slate-400 block uppercase truncate max-w-[150px] mx-auto mt-0.5">
                     {event.collaborators}
@@ -527,6 +655,130 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
         </div>
       )}
 
+      {/* Ticket Category Selection: Individual vs Group */}
+      <div className="mb-5 p-3.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
+        <label className="text-xs font-bold text-slate-800 block mb-2">Select Ticket Category</label>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => setTicketType('INDIVIDUAL')}
+            className={`p-3 rounded-lg border text-left transition flex items-center gap-3 ${
+              ticketType === 'INDIVIDUAL'
+                ? 'border-emerald-600 bg-emerald-50/70 ring-2 ring-emerald-500/20'
+                : 'border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0 ${
+              ticketType === 'INDIVIDUAL' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600'
+            }`}>
+              👤
+            </div>
+            <div>
+              <span className="text-xs font-bold text-slate-900 block">Individual Pass</span>
+              <span className="text-[11px] text-slate-500 block">Single admission (1 Person)</span>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setTicketType('GROUP')}
+            className={`p-3 rounded-lg border text-left transition flex items-center gap-3 ${
+              ticketType === 'GROUP'
+                ? 'border-emerald-600 bg-emerald-50/70 ring-2 ring-emerald-500/20'
+                : 'border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0 ${
+              ticketType === 'GROUP' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600'
+            }`}>
+              👥
+            </div>
+            <div>
+              <span className="text-xs font-bold text-slate-900 block">Group / Team Pass</span>
+              <span className="text-[11px] text-slate-500 block">Multiple attendees (2+ People)</span>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      {/* Group & Team Details Section */}
+      {ticketType === 'GROUP' && (
+        <div className="mb-5 p-4 rounded-xl bg-blue-50/80 border border-blue-200 space-y-4">
+          <div className="flex items-center justify-between gap-2 border-b border-blue-200/70 pb-2.5">
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-blue-700" />
+              <h4 className="text-xs font-bold uppercase tracking-wider text-blue-950">Group &amp; Team Details</h4>
+            </div>
+            <span className="text-[11px] font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">
+              Group Admission
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-800">Group / Team Name *</label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. CSE Batch 2026 / Team Phoenix"
+                value={groupName}
+                onChange={(e) => setGroupName(e.target.value)}
+                className="w-full text-sm rounded-lg border border-slate-300 p-2.5 bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-800">Total Group Size (Attendees) *</label>
+              <select
+                value={groupSize}
+                onChange={(e) => handleGroupSizeChange(Number(e.target.value))}
+                className="w-full text-sm rounded-lg border border-slate-300 p-2.5 bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+              >
+                {[2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => {
+                  const isOverCapacity = event.remainingCapacity !== null && event.remainingCapacity !== undefined && num > event.remainingCapacity;
+                  return (
+                    <option key={num} value={num} disabled={isOverCapacity}>
+                      {num} Attendees {isOverCapacity ? '(Exceeds remaining seats)' : ''}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+          </div>
+
+          <div className="space-y-2.5 pt-2 border-t border-blue-200/60">
+            <span className="text-xs font-bold text-slate-800 block">
+              Group Attendee Names:
+            </span>
+            <p className="text-[11px] text-slate-600">
+              Note: Attendee #1 is the Team Lead entered in the contact fields below. Please provide the names of all additional team members:
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {groupMembers.map((member, idx) => (
+                <div key={idx} className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-700">
+                    Member #{idx + 2} Full Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder={`Full Name of Member #${idx + 2}`}
+                    value={member}
+                    onChange={(e) => {
+                      const updated = [...groupMembers];
+                      updated[idx] = e.target.value;
+                      setGroupMembers(updated);
+                    }}
+                    className="w-full text-sm rounded-lg border border-slate-300 p-2.5 bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {event.registrationUploadLink && (
         <div className="mb-6 p-5 bg-white border border-emerald-200 rounded-lg shadow-sm">
           <h4 className="text-sm font-bold text-emerald-900 mb-2">Step 1: Upload Required Documents</h4>
@@ -554,7 +806,9 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
         
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-700">Full Name *</label>
+            <label className="text-xs font-bold text-slate-700">
+              {ticketType === 'GROUP' ? 'Team Lead Full Name *' : 'Full Name *'}
+            </label>
             <input
               type="text"
               required
@@ -564,7 +818,9 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-700">Email Address *</label>
+            <label className="text-xs font-bold text-slate-700">
+              {ticketType === 'GROUP' ? 'Team Lead Email Address *' : 'Email Address *'}
+            </label>
             <input
               type="email"
               required
@@ -574,7 +830,9 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-700">Phone Number *</label>
+            <label className="text-xs font-bold text-slate-700">
+              {ticketType === 'GROUP' ? 'Team Lead Phone Number *' : 'Phone Number *'}
+            </label>
             <input
               type="tel"
               required

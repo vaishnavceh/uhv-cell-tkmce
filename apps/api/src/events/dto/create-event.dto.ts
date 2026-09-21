@@ -271,6 +271,24 @@ export class CreateEventRegistrationDto {
   @IsString()
   uploadReference?: string;
 
+  @ApiPropertyOptional({ default: 'INDIVIDUAL', enum: ['INDIVIDUAL', 'GROUP'] })
+  @IsOptional()
+  @IsString()
+  ticketType?: string;
+
+  @ApiPropertyOptional({ default: 1 })
+  @IsOptional()
+  groupSize?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  groupName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  groupMembers?: any;
+
   @ApiPropertyOptional()
   @IsOptional()
   customData?: any;
