@@ -101,17 +101,24 @@ export const Events: React.FC = () => {
                     <span className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
                       {ev.category}
                     </span>
-                    <span
-                      className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                        ev.status === EventStatus.UPCOMING
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : ev.status === EventStatus.ONGOING
-                          ? 'bg-amber-100 text-amber-900'
-                          : 'bg-slate-100 text-slate-700'
-                      }`}
-                    >
-                      {ev.status}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      {ev.enableInternalReg && !ev.isRegistrationClosed && (!ev.registrationEndDate || new Date() <= new Date(ev.registrationEndDate)) && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-600 text-white shadow-xs">
+                          Registration Open
+                        </span>
+                      )}
+                      <span
+                        className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                          ev.status === EventStatus.UPCOMING
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : ev.status === EventStatus.ONGOING
+                            ? 'bg-amber-100 text-amber-900'
+                            : 'bg-slate-100 text-slate-700'
+                        }`}
+                      >
+                        {ev.status}
+                      </span>
+                    </div>
                   </div>
 
                   <h3 className="text-lg font-bold text-institutional-950 mb-2 leading-snug">
@@ -144,11 +151,18 @@ export const Events: React.FC = () => {
                     to={`/events/${ev.slug}`}
                     className="text-xs font-bold text-emerald-800 hover:text-emerald-950 flex items-center gap-1 group"
                   >
-                    <span>View Event Portal</span>
+                    <span>View Details</span>
                     <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                   </Link>
 
-                  {ev.registrationUrl && (
+                  {ev.enableInternalReg ? (
+                    <Link
+                      to={`/events/${ev.slug}`}
+                      className="inline-flex items-center gap-1 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 px-3 py-1.5 rounded shadow-sm"
+                    >
+                      <span>Register Now</span>
+                    </Link>
+                  ) : ev.registrationUrl ? (
                     <a
                       href={ev.registrationUrl}
                       target="_blank"
@@ -158,7 +172,7 @@ export const Events: React.FC = () => {
                       <span>Register</span>
                       <ExternalLink className="w-3 h-3" />
                     </a>
-                  )}
+                  ) : null}
                 </div>
               </div>
             ))}

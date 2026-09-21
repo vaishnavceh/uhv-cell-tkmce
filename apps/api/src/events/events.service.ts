@@ -82,11 +82,20 @@ export class EventsService {
   }
 
   async findBySlug(slug: string) {
-    const event = await this.prisma.event.findUnique({
+    let event = await this.prisma.event.findUnique({
       where: { slug },
     });
     if (!event) {
-      throw new NotFoundException(`Event with slug "${slug}" not found`);
+      try {
+        event = await this.prisma.event.findUnique({
+          where: { id: slug },
+        });
+      } catch {
+        // Not a valid UUID, ignore
+      }
+    }
+    if (!event) {
+      throw new NotFoundException(`Event with slug or ID "${slug}" not found`);
     }
     return event;
   }

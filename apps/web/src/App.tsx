@@ -87,7 +87,8 @@ export const App: React.FC = () => {
                   <Route path="/objectives" element={<Objectives />} />
                   <Route path="/activities" element={<Activities />} />
                   <Route path="/events" element={<Events />} />
-                  <Route path="/events/:id" element={<EventDetail />} />
+                  <Route path="/events/:slug" element={<EventDetail />} />
+                  <Route path="/events/id/:id" element={<EventDetail />} />
                   <Route path="/workshops" element={<Workshops />} />
                   <Route path="/team" element={<Team />} />
                   <Route path="/resources" element={<Resources />} />

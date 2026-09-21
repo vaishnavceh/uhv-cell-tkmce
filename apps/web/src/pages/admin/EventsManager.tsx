@@ -483,15 +483,17 @@ export const EventsManager: React.FC = () => {
                   />
                 </div>
                 
-                <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-red-700 bg-red-50 p-2 rounded border border-red-200">
-                  <input
-                    type="checkbox"
-                    checked={formData.isRegistrationClosed}
-                    onChange={(e) => setFormData({ ...formData, isRegistrationClosed: e.target.checked })}
-                    className="rounded text-red-600 focus:ring-red-500 w-4 h-4"
-                  />
-                  <span>Force Close Registrations Now (Manual Kill Switch)</span>
-                </label>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Registration Status</label>
+                  <select
+                    value={formData.isRegistrationClosed ? 'CLOSED' : 'OPEN'}
+                    onChange={(e) => setFormData({ ...formData, isRegistrationClosed: e.target.value === 'CLOSED' })}
+                    className="w-full text-xs rounded-lg border border-slate-300 p-2.5 focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                  >
+                    <option value="OPEN">🟢 Open for Registration (Accepts attendees until deadline)</option>
+                    <option value="CLOSED">🔴 Closed Manually (Stops registrations immediately)</option>
+                  </select>
+                </div>
 
                 <Input
                   label="External Upload Link (e.g. Google Drive Folder)"

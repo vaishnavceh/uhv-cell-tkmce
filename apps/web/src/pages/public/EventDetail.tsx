@@ -9,16 +9,17 @@ import { formatDate } from '../../utils/cn';
 import { Button } from '../../components/ui/Button';
 
 export const EventDetail: React.FC = () => {
-  const { slug } = useParams<{ slug: string }>();
+  const { slug, id } = useParams<{ slug?: string; id?: string }>();
+  const eventIdentifier = slug || id;
   usePageTitle('Event Details');
 
   const { data: event, isLoading, isError } = useQuery<EventItem>({
-    queryKey: ['public-event-detail', slug],
+    queryKey: ['public-event-detail', eventIdentifier],
     queryFn: async () => {
-      const res = await apiClient.get(`/events/slug/${slug}`);
+      const res = await apiClient.get(`/events/slug/${eventIdentifier}`);
       return res.data;
     },
-    enabled: !!slug,
+    enabled: !!eventIdentifier,
   });
 
   if (isLoading) {
@@ -69,9 +70,16 @@ export const EventDetail: React.FC = () => {
               <span className="text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
                 {event.category}
               </span>
-              <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800">
-                Status: {event.status}
-              </span>
+              <div className="flex items-center gap-2">
+                {event.enableInternalReg && isRegistrationOpen && (
+                  <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-600 text-white shadow-sm">
+                    ● Registration Open
+                  </span>
+                )}
+                <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800">
+                  Status: {event.status}
+                </span>
+              </div>
             </div>
 
             <h1 className="text-2xl sm:text-3xl font-extrabold text-institutional-950 leading-tight">
@@ -129,7 +137,15 @@ export const EventDetail: React.FC = () => {
 
             {event.enableInternalReg ? (
               isRegistrationOpen ? (
-                <EventRegistrationForm event={event} />
+                <div className="space-y-4">
+                  {event.registrationEndDate && (
+                    <div className="p-3 bg-emerald-50/80 border border-emerald-200 rounded-lg text-xs text-emerald-800 flex items-center justify-between print:hidden">
+                      <span className="font-semibold">⏰ Registration Deadline:</span>
+                      <span className="font-bold">{formatDate(event.registrationEndDate)}</span>
+                    </div>
+                  )}
+                  <EventRegistrationForm event={event} />
+                </div>
               ) : (
                 <div className="bg-red-50 border border-red-200 text-red-800 p-6 rounded-lg text-center font-bold print:hidden">
                   Registrations for this event are currently closed.
