@@ -21,7 +21,9 @@ import {
   MapPin,
   Users,
   Banknote,
+  Printer,
 } from 'lucide-react';
+import { TicketPassModal } from '../../components/common/TicketPassModal';
 
 export const TicketScanner: React.FC = () => {
   usePageTitle('Event Ticket Scanner');
@@ -32,6 +34,7 @@ export const TicketScanner: React.FC = () => {
   const [manualId, setManualId] = useState('');
   const [regDetails, setRegDetails] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showPrintModal, setShowPrintModal] = useState(false);
 
   const [scanHistory, setScanHistory] = useState<
     Array<{
@@ -650,6 +653,19 @@ export const TicketScanner: React.FC = () => {
                     )}
                   </div>
                 )}
+
+                {/* Print Ticket Option for Scanned Attendee */}
+                <div className="pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowPrintModal(true)}
+                    className="w-full border-slate-300 text-slate-700 hover:bg-slate-50 text-xs flex items-center justify-center gap-1.5"
+                  >
+                    <Printer className="w-3.5 h-3.5" /> View &amp; Print Ticket Pass
+                  </Button>
+                </div>
               </div>
 
               <Button onClick={resetScanner} className="w-full bg-slate-900 hover:bg-black text-white mt-2">
@@ -694,6 +710,14 @@ export const TicketScanner: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Official Ticket Pass Viewer & Printer Modal */}
+      <TicketPassModal
+        isOpen={showPrintModal}
+        onClose={() => setShowPrintModal(false)}
+        registration={regDetails}
+        event={regDetails?.event}
+      />
     </div>
   );
 };

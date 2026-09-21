@@ -3,7 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../api/client';
 import { EventItem, EventStatus, RegistrationFieldDefinition, EventCoordinator, SplitCollaborator } from '@uhv/shared-types';
 import { usePageTitle } from '../../hooks/usePageTitle';
-import { Plus, Edit2, Trash2, Calendar, Search, ExternalLink, Users, Download, CheckCircle, XCircle, Phone, Building2 } from 'lucide-react';
+import { Plus, Edit2, Trash2, Calendar, Search, ExternalLink, Users, Download, CheckCircle, XCircle, Phone, Building2, Printer, Ticket } from 'lucide-react';
+import { TicketPassModal } from '../../components/common/TicketPassModal';
 import { formatDate } from '../../utils/cn';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -1273,6 +1274,7 @@ const EventRegistrationsViewer: React.FC<{ eventId: string | null; event?: Event
   const queryClient = useQueryClient();
   const { success, error, info } = useToast();
   const customFields: RegistrationFieldDefinition[] = (event?.registrationFields as RegistrationFieldDefinition[]) || [];
+  const [printPassReg, setPrintPassReg] = useState<any>(null);
 
   const { data: registrations, isLoading } = useQuery<any[]>({
     queryKey: ['admin-event-registrations', eventId],
@@ -1568,7 +1570,15 @@ const EventRegistrationsViewer: React.FC<{ eventId: string | null; event?: Event
                       </span>
                     )}
                   </Td>
-                  <Td className="text-right space-x-2 whitespace-nowrap">
+                  <Td className="text-right space-x-1.5 whitespace-nowrap">
+                    <button
+                      type="button"
+                      onClick={() => setPrintPassReg(reg)}
+                      className="text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 p-1.5 rounded transition inline-flex items-center"
+                      title="View & Print Official Ticket Pass"
+                    >
+                      <Printer className="w-4 h-4" />
+                    </button>
                     {reg.status !== 'APPROVED' && (
                       <button
                         onClick={() => updateStatusMutation.mutate({ id: reg.id, status: 'APPROVED' })}
@@ -1594,6 +1604,14 @@ const EventRegistrationsViewer: React.FC<{ eventId: string | null; event?: Event
           </Tbody>
         </Table>
       </div>
+
+      {/* Ticket Pass Viewer & Printer Modal */}
+      <TicketPassModal
+        isOpen={!!printPassReg}
+        onClose={() => setPrintPassReg(null)}
+        registration={printPassReg}
+        event={event}
+      />
     </div>
   );
 };
