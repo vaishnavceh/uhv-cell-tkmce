@@ -55,11 +55,9 @@ export class EventsController {
     return this.eventsService.findBySlug(slug);
   }
 
+  @Public()
   @Get('registrations/verify/:regId')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleName.SUPER_ADMIN, RoleName.ADMIN, RoleName.EDITOR, RoleName.CONTENT_MANAGER)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Verify a registration by ID for ticket scanning (Admin)' })
+  @ApiOperation({ summary: 'Verify a registration by ID for ticket scanning' })
   async verifyRegistration(@Param('regId') regId: string) {
     return this.eventsService.verifyRegistration(regId);
   }

@@ -143,7 +143,7 @@ export class AuthService {
 
     const accessToken = this.jwtService.sign(payload, {
       secret: process.env.JWT_ACCESS_SECRET || 'uhv_jwt_access_secret_key_random_long_string_tkmce_2026',
-      expiresIn: process.env.JWT_ACCESS_EXPIRES_IN || '15m',
+      expiresIn: process.env.JWT_ACCESS_EXPIRES_IN || '7d',
     });
 
     // Generate random raw refresh token
