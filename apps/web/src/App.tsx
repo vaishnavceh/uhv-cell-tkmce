@@ -45,6 +45,7 @@ const RolesViewer = lazy(() => import('./pages/admin/RolesViewer').then(m => ({ 
 const AuditLogsViewer = lazy(() => import('./pages/admin/AuditLogsViewer').then(m => ({ default: m.AuditLogsViewer })));
 const SettingsManager = lazy(() => import('./pages/admin/SettingsManager').then(m => ({ default: m.SettingsManager })));
 const DatabaseManager = lazy(() => import('./pages/admin/DatabaseManager').then(m => ({ default: m.DatabaseManager })));
+const TicketScanner = lazy(() => import('./pages/admin/TicketScanner').then(m => ({ default: m.TicketScanner })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -118,6 +119,7 @@ export const App: React.FC = () => {
                   <Route path="objectives" element={<ObjectivesManager />} />
                   <Route path="activities" element={<ActivitiesManager />} />
                   <Route path="events" element={<EventsManager />} />
+                  <Route path="scanner" element={<TicketScanner />} />
                   <Route path="workshops" element={<Navigate to="/admin/events" replace />} />
                   <Route path="team" element={<TeamManager />} />
                   <Route path="resources" element={<ResourcesManager />} />

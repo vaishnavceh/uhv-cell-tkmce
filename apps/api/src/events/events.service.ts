@@ -533,4 +533,56 @@ export class EventsService {
       data: { status },
     });
   }
+
+  async verifyRegistration(regId: string) {
+    const registration = await this.prisma.eventRegistration.findUnique({
+      where: { id: regId },
+      include: {
+        event: {
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+            eventDate: true,
+            startTime: true,
+            endTime: true,
+            venue: true,
+            category: true,
+            isPaid: true,
+            ticketPrice: true,
+            status: true,
+            collaborators: true,
+            coordinatorName: true,
+            coordinatorPhone: true,
+          },
+        },
+      },
+    });
+    if (!registration) {
+      throw new NotFoundException(`Registration with ID "${regId}" not found`);
+    }
+    return registration;
+  }
+
+  async checkInRegistration(regId: string) {
+    const reg = await this.prisma.eventRegistration.findUnique({ where: { id: regId } });
+    if (!reg) throw new NotFoundException('Registration not found');
+    if (reg.checkedIn) {
+      return { ...reg, alreadyCheckedIn: true };
+    }
+    const updated = await this.prisma.eventRegistration.update({
+      where: { id: regId },
+      data: { checkedIn: true, checkedInAt: new Date() },
+    });
+    return { ...updated, alreadyCheckedIn: false };
+  }
+
+  async verifyPayment(regId: string) {
+    const reg = await this.prisma.eventRegistration.findUnique({ where: { id: regId } });
+    if (!reg) throw new NotFoundException('Registration not found');
+    return this.prisma.eventRegistration.update({
+      where: { id: regId },
+      data: { paymentStatus: 'VERIFIED' },
+    });
+  }
 }

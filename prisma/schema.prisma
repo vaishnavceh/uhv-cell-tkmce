@@ -181,6 +181,8 @@ model EventRegistration {
   paymentStatus   String             @default("FREE")
   totalAmount     Float              @default(0)
   status          RegistrationStatus @default(APPROVED)
+  checkedIn       Boolean            @default(false)
+  checkedInAt     DateTime?
   createdAt       DateTime           @default(now())
 
   @@index([eventId])

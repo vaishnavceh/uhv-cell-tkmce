@@ -22,6 +22,7 @@ import {
   X,
   ExternalLink,
   ChevronRight,
+  Scan,
 } from 'lucide-react';
 import { RoleName } from '@uhv/shared-types';
 
@@ -45,6 +46,7 @@ export const AdminLayout: React.FC = () => {
     { label: 'Objectives', path: '/admin/objectives', icon: Target },
     { label: 'Activities', path: '/admin/activities', icon: Sparkles },
     { label: 'Events & Workshops', path: '/admin/events', icon: Calendar },
+    { label: 'Ticket Scanner', path: '/admin/scanner', icon: Scan },
     { label: 'Team Members', path: '/admin/team', icon: Users },
     { label: 'Resources & Docs', path: '/admin/resources', icon: FileText },
     { label: 'Gallery Albums', path: '/admin/gallery', icon: ImageIcon },

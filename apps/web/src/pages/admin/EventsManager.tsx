@@ -1322,7 +1322,11 @@ const EventRegistrationsViewer: React.FC<{ eventId: string | null; event?: Event
       'Total Amount (₹)',
       ...customFields.map((f) => f.label || f.id),
       'Payment Ref / UTR / Upload Ref',
+      'Payment Status',
+      'Payment Verified',
       'Status',
+      'Checked In',
+      'Checked In At',
       'Registered At',
     ];
 
@@ -1355,7 +1359,11 @@ const EventRegistrationsViewer: React.FC<{ eventId: string | null; event?: Event
         return escapeCSV(raw ?? '');
       }),
       escapeCSV(reg.paymentReference || reg.uploadReference || ''),
+      escapeCSV(reg.paymentStatus || 'FREE'),
+      escapeCSV(reg.paymentStatus === 'VERIFIED' ? 'Yes' : 'No'),
       escapeCSV(reg.status || 'APPROVED'),
+      escapeCSV(reg.checkedIn ? 'Yes' : 'No'),
+      escapeCSV(reg.checkedInAt ? new Date(reg.checkedInAt).toLocaleString() : ''),
       escapeCSV(reg.createdAt ? new Date(reg.createdAt).toLocaleString() : ''),
     ]);
 
@@ -1503,6 +1511,16 @@ const EventRegistrationsViewer: React.FC<{ eventId: string | null; event?: Event
                     >
                       {reg.status}
                     </Badge>
+                    {reg.checkedIn && (
+                      <span className="block mt-1 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                        ✅ Checked In
+                      </span>
+                    )}
+                    {reg.paymentStatus === 'VERIFIED' && (
+                      <span className="block mt-0.5 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                        💳 Payment Verified
+                      </span>
+                    )}
                   </Td>
                   <Td className="text-right space-x-2 whitespace-nowrap">
                     {reg.status !== 'APPROVED' && (

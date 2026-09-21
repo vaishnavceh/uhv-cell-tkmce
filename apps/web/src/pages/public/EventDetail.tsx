@@ -6,6 +6,7 @@ import { EventItem, RegistrationFieldDefinition } from '@uhv/shared-types';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { Calendar, Clock, MapPin, ArrowLeft, ExternalLink, ShieldCheck, Share2, Hourglass, Download, Building2, Users, Phone, Mail, Bell, Copy, Check, QrCode, CreditCard, Lock } from 'lucide-react';
 import { toPng } from 'html-to-image';
+import { QRCodeSVG } from 'qrcode.react';
 import { formatDate } from '../../utils/cn';
 import { Button } from '../../components/ui/Button';
 
@@ -530,14 +531,9 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
   React.useEffect(() => {
     let isMounted = true;
     if (successData) {
-      const regCode = `UHV-${(successData.id || 'TICKET').slice(0, 8).toUpperCase()}`;
-      const isGroup = successData.ticketType === 'GROUP' || (successData.groupSize && successData.groupSize > 1);
-      const membersText = isGroup && Array.isArray(successData.groupMembers) && successData.groupMembers.length > 0
-        ? `\nMEMBERS: ${successData.fullName} (Lead), ${successData.groupMembers.join(', ')}`
-        : '';
-      const url = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
-        `TKMCE UHV EVENT: ${event.title}\nPASS: ${regCode}\nTYPE: ${isGroup ? `GROUP PASS (${successData.groupSize} ATTENDEES)` : 'INDIVIDUAL PASS'}\nNAME: ${successData.fullName}${isGroup && successData.groupName ? `\nTEAM: ${successData.groupName}` : ''}${membersText}`
-      )}`;
+      // Encode just the registration ID for reliable admin scanner lookup
+      const qrPayload = `UHVPASS::${successData.id}`;
+      const url = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrPayload)}`;
       fetch(url)
         .then((res) => res.blob())
         .then((blob) => {
@@ -657,8 +653,8 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
     const regCode = `UHV-${(successData.id || 'TICKET').slice(0, 8).toUpperCase()}`;
     const isGroup = successData.ticketType === 'GROUP' || (successData.groupSize && successData.groupSize > 1);
     const membersList: string[] = Array.isArray(successData.groupMembers) ? successData.groupMembers : [];
-    const fallbackQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
-      `TKMCE UHV EVENT: ${event.title}\nPASS: ${regCode}\nNAME: ${successData.fullName}`
+    const fallbackQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
+      `UHVPASS::${successData.id}`
     )}`;
 
     const totalFeeText = event.isPaid
@@ -1394,7 +1390,25 @@ Universal Human Values Cell • TKM College of Engineering, Kollam`;
                   </div>
 
                   <div className="flex flex-col sm:flex-row items-center gap-5">
-                    {event.upiQrCode && (
+                    {/* Dynamic QR Code with pre-filled amount — generated from UPI ID */}
+                    {event.upiId ? (
+                      <div className="bg-white p-3 rounded-xl shadow-md border border-slate-200 shrink-0 text-center">
+                        <QRCodeSVG
+                          value={`upi://pay?pa=${encodeURIComponent(event.upiId)}&pn=${encodeURIComponent(event.title)}&am=${currentTotalFee}&cu=INR&tn=${encodeURIComponent(`Registration for ${event.title}`)}`}
+                          size={152}
+                          bgColor="#ffffff"
+                          fgColor="#000000"
+                          level="M"
+                          includeMargin={false}
+                        />
+                        <span className="text-[10px] font-bold text-emerald-700 block mt-1.5">
+                          Scan to Pay ₹{currentTotalFee}
+                        </span>
+                        <span className="text-[8px] text-slate-400 block">
+                          Amount auto-filled on scan
+                        </span>
+                      </div>
+                    ) : event.upiQrCode ? (
                       <div className="bg-white p-2.5 rounded-xl shadow-md border border-slate-200 shrink-0 text-center">
                         <img
                           src={event.upiQrCode}
@@ -1406,7 +1420,7 @@ Universal Human Values Cell • TKM College of Engineering, Kollam`;
                           Scan to Pay ₹{currentTotalFee}
                         </span>
                       </div>
-                    )}
+                    ) : null}
 
                     <div className="space-y-3 flex-1 w-full">
                       {event.upiId && (

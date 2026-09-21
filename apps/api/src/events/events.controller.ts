@@ -55,6 +55,15 @@ export class EventsController {
     return this.eventsService.findBySlug(slug);
   }
 
+  @Get('registrations/verify/:regId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleName.SUPER_ADMIN, RoleName.ADMIN, RoleName.EDITOR, RoleName.CONTENT_MANAGER)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Verify a registration by ID for ticket scanning (Admin)' })
+  async verifyRegistration(@Param('regId') regId: string) {
+    return this.eventsService.verifyRegistration(regId);
+  }
+
   @Get(':id')
   @Public()
   @ApiOperation({ summary: 'Get event details by ID' })
@@ -130,5 +139,23 @@ export class EventsController {
     @Body('status') status: any,
   ) {
     return this.eventsService.updateRegistrationStatus(regId, status);
+  }
+
+  @Patch('registrations/:regId/check-in')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleName.SUPER_ADMIN, RoleName.ADMIN, RoleName.EDITOR, RoleName.CONTENT_MANAGER)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Check in an attendee at the event venue (Admin)' })
+  async checkInRegistration(@Param('regId') regId: string) {
+    return this.eventsService.checkInRegistration(regId);
+  }
+
+  @Patch('registrations/:regId/verify-payment')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleName.SUPER_ADMIN, RoleName.ADMIN, RoleName.EDITOR, RoleName.CONTENT_MANAGER)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Verify payment for a registration (Admin)' })
+  async verifyPayment(@Param('regId') regId: string) {
+    return this.eventsService.verifyPayment(regId);
   }
 }
