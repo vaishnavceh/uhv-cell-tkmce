@@ -62,21 +62,33 @@ export const TicketScanner: React.FC = () => {
     setIsLoading(true);
     try {
       const response = await apiClient.get(`/events/registrations/verify/${id}`);
-      setRegDetails(response.data);
-      if (response.data) {
-        const isPaid = !!response.data.event?.isPaid;
-        const isVerified = response.data.paymentStatus === 'VERIFIED';
+      const data = response.data;
+      setRegDetails(data);
+      if (data) {
+        const ticketFee = Number(data.event?.ticketPrice) || 0;
+        const regAmount = Number(data.totalAmount) || 0;
+        const isPaid = Boolean(
+          data.event?.isPaid === true ||
+          data.event?.isPaid === 'true' ||
+          ticketFee > 0 ||
+          regAmount > 0 ||
+          (data.paymentStatus && data.paymentStatus !== 'FREE')
+        );
+        const isVerified = data.paymentStatus === 'VERIFIED' || data.paymentStatus === 'PAID';
+
         let statusTag = '✅ verified pass';
-        if (response.data.checkedIn) {
+        if (data.checkedIn) {
           statusTag = '⚠️ already in';
         } else if (isPaid && !isVerified) {
           statusTag = '⚠️ payment not done';
+        } else if (!isPaid) {
+          statusTag = '🎟️ free pass';
         }
 
         setScanHistory((prev) => [
           {
             time: new Date(),
-            name: response.data.fullName || 'Unknown Attendee',
+            name: data.fullName || 'Unknown Attendee',
             status: statusTag,
           },
           ...prev,
@@ -158,7 +170,11 @@ export const TicketScanner: React.FC = () => {
     mutationFn: (id: string) => apiClient.patch(`/events/registrations/${id}/verify-payment`, { status: 'VERIFIED' }),
     onSuccess: (data) => {
       showToast('Payment verified successfully!', 'success');
-      setRegDetails(data.data);
+      setRegDetails((prev: any) => ({
+        ...prev,
+        ...data.data,
+        event: data.data.event || prev?.event,
+      }));
     },
     onError: () => {
       showToast('Failed to verify payment', 'error');
@@ -169,7 +185,11 @@ export const TicketScanner: React.FC = () => {
     mutationFn: (id: string) => apiClient.patch(`/events/registrations/${id}/check-in`),
     onSuccess: (data) => {
       showToast('Checked in successfully! Entry permitted.', 'success');
-      setRegDetails(data.data);
+      setRegDetails((prev: any) => ({
+        ...prev,
+        ...data.data,
+        event: data.data.event || prev?.event,
+      }));
       setScanHistory((prev) => {
         const newHistory = [...prev];
         if (newHistory.length > 0) {
@@ -187,7 +207,11 @@ export const TicketScanner: React.FC = () => {
     mutationFn: (id: string) => apiClient.patch(`/events/registrations/${id}/spot-payment`),
     onSuccess: (data) => {
       showToast('Spot payment collected & attendee checked in!', 'success');
-      setRegDetails(data.data);
+      setRegDetails((prev: any) => ({
+        ...prev,
+        ...data.data,
+        event: data.data.event || prev?.event,
+      }));
       setScanHistory((prev) => {
         const newHistory = [...prev];
         if (newHistory.length > 0) {
@@ -205,7 +229,11 @@ export const TicketScanner: React.FC = () => {
     mutationFn: (id: string) => apiClient.patch(`/events/registrations/${id}`, { status: 'REJECTED' }),
     onSuccess: (data) => {
       showToast('Pass rejected. Entry denied.', 'info');
-      setRegDetails(data.data);
+      setRegDetails((prev: any) => ({
+        ...prev,
+        ...data.data,
+        event: data.data.event || prev?.event,
+      }));
       setScanHistory((prev) => {
         const newHistory = [...prev];
         if (newHistory.length > 0) {
@@ -228,8 +256,30 @@ export const TicketScanner: React.FC = () => {
     handleScan(manualId);
   };
 
-  const isPaidEvent = !!regDetails?.event?.isPaid;
-  const isPaymentVerified = !isPaidEvent || regDetails?.paymentStatus === 'VERIFIED' || regDetails?.paymentStatus === 'FREE';
+  // ROBUST PAID EVENT DETECTION:
+  // An event/ticket is PAID if:
+  // 1. event.isPaid is true
+  // 2. ticketPrice > 0
+  // 3. registration totalAmount > 0
+  // 4. paymentStatus is not 'FREE' (e.g. 'PENDING', 'VERIFIED', 'PAID')
+  const ticketFee = Number(regDetails?.event?.ticketPrice) || 0;
+  const regAmount = Number(regDetails?.totalAmount) || 0;
+  const isPaidEvent = Boolean(
+    regDetails?.event?.isPaid === true ||
+    regDetails?.event?.isPaid === 'true' ||
+    ticketFee > 0 ||
+    regAmount > 0 ||
+    (regDetails?.paymentStatus && regDetails?.paymentStatus !== 'FREE')
+  );
+
+  const finalDueAmount = regAmount > 0 ? regAmount : (ticketFee * (regDetails?.groupSize || 1));
+
+  // Payment is verified ONLY if:
+  // - Event is purely free (!isPaidEvent)
+  // - OR if paid, paymentStatus is explicitly 'VERIFIED' or 'PAID'
+  const isPaymentVerified = isPaidEvent
+    ? (regDetails?.paymentStatus === 'VERIFIED' || regDetails?.paymentStatus === 'PAID')
+    : true;
 
   return (
     <div className="max-w-3xl mx-auto p-4 space-y-6">
@@ -290,47 +340,63 @@ export const TicketScanner: React.FC = () => {
           ) : (
             <div className="space-y-6">
               {/* PRIMARY PAYMENT STATUS BANNER */}
-              {isPaymentVerified ? (
+              {isPaidEvent ? (
+                isPaymentVerified ? (
+                  /* Case 1: Paid Event - Payment Verified */
+                  <div className="bg-emerald-50 border-2 border-emerald-500 text-emerald-950 p-4 rounded-2xl flex items-start gap-3 shadow-sm">
+                    <CheckCircle className="w-8 h-8 text-emerald-600 shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-lg font-black text-emerald-900">
+                          ✅ PAYMENT SUCCEEDED &amp; VERIFIED
+                        </h3>
+                        <Badge variant="success" size="sm">Pre-Verified by Admin</Badge>
+                      </div>
+                      <p className="text-xs text-emerald-700 font-medium mt-0.5">
+                        Total fee of <strong className="text-emerald-950">₹{finalDueAmount}</strong> was cross-checked and verified by Admin before the event. Guest is authorized for admission!
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  /* Case 2: Paid Event - Payment NOT Verified / Pending */
+                  <div className="bg-rose-50 border-2 border-rose-500 text-rose-950 p-4 rounded-2xl flex items-start gap-3 shadow-sm">
+                    <AlertTriangle className="w-8 h-8 text-rose-600 shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-lg font-black text-rose-900">
+                          ⚠️ PAYMENT NOT DONE / UNVERIFIED!
+                        </h3>
+                        <Badge variant="danger" size="sm">Payment Due: ₹{finalDueAmount}</Badge>
+                      </div>
+                      <p className="text-xs text-rose-700 font-medium mt-0.5">
+                        Amount Due: <strong className="text-sm font-black text-rose-950">₹{finalDueAmount}</strong>. This attendee has NOT been confirmed for payment by Admin.
+                      </p>
+                      {regDetails.paymentReference ? (
+                        <p className="text-[11px] font-mono text-rose-800 mt-1 bg-rose-100/70 p-1.5 rounded inline-block">
+                          Claimed UTR/Ref: <strong>{regDetails.paymentReference}</strong> (Unverified)
+                        </p>
+                      ) : (
+                        <p className="text-[11px] text-rose-800 mt-1 italic">
+                          No payment transaction reference was provided during registration.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )
+              ) : (
+                /* Case 3: Free Event */
                 <div className="bg-emerald-50 border-2 border-emerald-500 text-emerald-950 p-4 rounded-2xl flex items-start gap-3 shadow-sm">
                   <CheckCircle className="w-8 h-8 text-emerald-600 shrink-0 mt-0.5" />
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <h3 className="text-lg font-black text-emerald-900">
-                        ✅ PAYMENT SUCCEEDED &amp; VERIFIED
+                        🎟️ FREE ADMISSION PASS
                       </h3>
-                      <Badge variant="success" size="sm">
-                        {isPaidEvent ? 'Pre-Verified by Admin' : 'Free Pass'}
-                      </Badge>
+                      <Badge variant="success" size="sm">Free Admission</Badge>
                     </div>
                     <p className="text-xs text-emerald-700 font-medium mt-0.5">
-                      {isPaidEvent
-                        ? `Total ₹${regDetails.totalAmount} was cross-checked and verified by Admin before the event. Guest is authorized for admission!`
-                        : 'Free admission event. No fee required. Entry authorized!'}
+                      Free admission event. No registration fee required. Entry authorized!
                     </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-rose-50 border-2 border-rose-500 text-rose-950 p-4 rounded-2xl flex items-start gap-3 shadow-sm">
-                  <AlertTriangle className="w-8 h-8 text-rose-600 shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-lg font-black text-rose-900">
-                        ⚠️ PAYMENT NOT DONE / UNVERIFIED!
-                      </h3>
-                      <Badge variant="danger" size="sm">Payment Pending</Badge>
-                    </div>
-                    <p className="text-xs text-rose-700 font-medium mt-0.5">
-                      Amount Due: <strong className="text-sm font-black text-rose-950">₹{regDetails.totalAmount || 0}</strong>. This attendee has NOT been confirmed for payment by Admin.
-                    </p>
-                    {regDetails.paymentReference ? (
-                      <p className="text-[11px] font-mono text-rose-800 mt-1 bg-rose-100/70 p-1.5 rounded inline-block">
-                        Claimed UTR/Ref: <strong>{regDetails.paymentReference}</strong> (Not yet confirmed)
-                      </p>
-                    ) : (
-                      <p className="text-[11px] text-rose-800 mt-1 italic">
-                        No payment transaction reference was provided during registration.
-                      </p>
-                    )}
                   </div>
                 </div>
               )}
@@ -345,12 +411,12 @@ export const TicketScanner: React.FC = () => {
                     {regDetails.checkedIn ? 'Already Checked In' : 'Ready for Check-In'}
                   </Badge>
 
-                  <Badge variant={isPaymentVerified ? 'success' : 'danger'}>
-                    {regDetails.paymentStatus === 'VERIFIED'
-                      ? 'Payment Verified'
-                      : regDetails.paymentStatus === 'FREE'
-                      ? 'Free Entry'
-                      : 'Payment Unverified'}
+                  <Badge variant={isPaidEvent ? (isPaymentVerified ? 'success' : 'danger') : 'success'}>
+                    {isPaidEvent
+                      ? isPaymentVerified
+                        ? 'Payment Verified'
+                        : 'Payment Unverified'
+                      : 'Free Entry'}
                   </Badge>
 
                   <Badge
@@ -421,6 +487,12 @@ export const TicketScanner: React.FC = () => {
                       {regDetails.ticketType || 'INDIVIDUAL'} ({regDetails.groupSize || 1} Attendee
                       {(regDetails.groupSize || 1) > 1 ? 's' : ''})
                     </p>
+                    <p>
+                      <span className="font-semibold text-slate-700">Admission Type:</span>{' '}
+                      <span className={`font-bold ${isPaidEvent ? 'text-amber-800' : 'text-emerald-800'}`}>
+                        {isPaidEvent ? `Paid Event (₹${ticketFee}/pass)` : 'Free Event'}
+                      </span>
+                    </p>
                   </div>
                 </div>
 
@@ -456,19 +528,19 @@ export const TicketScanner: React.FC = () => {
                   </h3>
                   <div className="text-xs grid grid-cols-1 sm:grid-cols-3 gap-2 text-slate-700">
                     <div>
-                      <span className="block text-slate-400 font-medium">Total Amount</span>
+                      <span className="block text-slate-400 font-medium">Total Amount Due</span>
                       <span className="font-bold text-sm text-slate-900">
-                        {isPaidEvent ? `₹${regDetails.totalAmount || 0}` : 'FREE'}
+                        {isPaidEvent ? `₹${finalDueAmount}` : 'FREE'}
                       </span>
                     </div>
                     <div>
                       <span className="block text-slate-400 font-medium">Verification State</span>
                       <span className="font-bold uppercase text-slate-900">
-                        {regDetails.paymentStatus === 'VERIFIED'
-                          ? '✅ Verified by Admin'
-                          : regDetails.paymentStatus === 'FREE'
-                          ? 'Free'
-                          : '⚠️ Not Verified'}
+                        {isPaidEvent
+                          ? isPaymentVerified
+                            ? '✅ Verified by Admin'
+                            : '⚠️ Not Verified'
+                          : 'Free Entry'}
                       </span>
                     </div>
                     <div>
@@ -483,8 +555,85 @@ export const TicketScanner: React.FC = () => {
 
               {/* GATE ACTIONS */}
               <div className="pt-4 border-t border-slate-200 space-y-3">
-                {isPaymentVerified ? (
-                  /* Case A: Payment was Pre-Verified by Admin before event */
+                {isPaidEvent ? (
+                  isPaymentVerified ? (
+                    /* Case 1: Paid Event - Already Verified */
+                    <div className="space-y-2">
+                      {!regDetails.checkedIn ? (
+                        <Button
+                          onClick={() => checkInMutation.mutate(regDetails.id)}
+                          disabled={checkInMutation.isPending}
+                          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 text-sm shadow-md flex items-center justify-center gap-2"
+                        >
+                          <UserCheck className="w-5 h-5" /> Confirm &amp; Check In Attendee
+                        </Button>
+                      ) : (
+                        <div className="text-center text-xs text-amber-700 font-semibold bg-amber-50 py-2 rounded-lg border border-amber-200">
+                          Attendee has already entered.
+                        </div>
+                      )}
+
+                      <div className="flex gap-2">
+                        {regDetails.status !== 'REJECTED' && (
+                          <Button
+                            onClick={() => rejectMutation.mutate(regDetails.id)}
+                            disabled={rejectMutation.isPending}
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 border-rose-300 text-rose-600 hover:bg-rose-50 text-xs"
+                          >
+                            <XCircle className="w-3.5 h-3.5 mr-1" /> Revoke / Reject Pass
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    /* Case 2: Paid Event - NOT Verified / Unpaid */
+                    <div className="space-y-3">
+                      <div className="bg-amber-50/80 p-3.5 rounded-xl border border-amber-200 space-y-2">
+                        <p className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
+                          <Banknote className="w-4 h-4 text-amber-700" /> Choose Gate Action for Unpaid Pass:
+                        </p>
+                        
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {/* Option 1: Collect Spot Payment & Check In */}
+                          <Button
+                            onClick={() => spotPaymentMutation.mutate(regDetails.id)}
+                            disabled={spotPaymentMutation.isPending}
+                            className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs py-2.5 shadow-sm flex items-center justify-center gap-1.5"
+                          >
+                            <Banknote className="w-4 h-4" /> Collect Spot ₹{finalDueAmount} &amp; Check In
+                          </Button>
+
+                          {/* Option 2: Verify Claimed Ref (if attendee proves UPI screenshot on phone) */}
+                          <Button
+                            onClick={() => {
+                              verifyPaymentMutation.mutate(regDetails.id);
+                              checkInMutation.mutate(regDetails.id);
+                            }}
+                            disabled={verifyPaymentMutation.isPending || checkInMutation.isPending}
+                            className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-2.5 shadow-sm flex items-center justify-center gap-1.5"
+                          >
+                            <CheckCircle className="w-4 h-4" /> Verify Proof &amp; Check In
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Option 3: Reject Pass / Deny Entry */}
+                      {regDetails.status !== 'REJECTED' && (
+                        <Button
+                          onClick={() => rejectMutation.mutate(regDetails.id)}
+                          disabled={rejectMutation.isPending}
+                          variant="outline"
+                          className="w-full border-rose-300 text-rose-600 hover:bg-rose-50 font-bold text-xs py-2"
+                        >
+                          <XCircle className="w-4 h-4 mr-1.5" /> Reject Pass / Deny Entry
+                        </Button>
+                      )}
+                    </div>
+                  )
+                ) : (
+                  /* Case 3: Free Event */
                   <div className="space-y-2">
                     {!regDetails.checkedIn ? (
                       <Button
@@ -498,64 +647,6 @@ export const TicketScanner: React.FC = () => {
                       <div className="text-center text-xs text-amber-700 font-semibold bg-amber-50 py-2 rounded-lg border border-amber-200">
                         Attendee has already entered.
                       </div>
-                    )}
-
-                    <div className="flex gap-2">
-                      {regDetails.status !== 'REJECTED' && (
-                        <Button
-                          onClick={() => rejectMutation.mutate(regDetails.id)}
-                          disabled={rejectMutation.isPending}
-                          variant="outline"
-                          size="sm"
-                          className="flex-1 border-rose-300 text-rose-600 hover:bg-rose-50 text-xs"
-                        >
-                          <XCircle className="w-3.5 h-3.5 mr-1" /> Revoke / Reject Pass
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  /* Case B: Payment is NOT DONE / UNVERIFIED */
-                  <div className="space-y-3">
-                    <div className="bg-amber-50/80 p-3.5 rounded-xl border border-amber-200 space-y-2">
-                      <p className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
-                        <Banknote className="w-4 h-4 text-amber-700" /> Choose Gate Action for Unpaid Pass:
-                      </p>
-                      
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {/* Option 1: Collect Spot Payment & Check In */}
-                        <Button
-                          onClick={() => spotPaymentMutation.mutate(regDetails.id)}
-                          disabled={spotPaymentMutation.isPending}
-                          className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs py-2.5 shadow-sm flex items-center justify-center gap-1.5"
-                        >
-                          <Banknote className="w-4 h-4" /> Collect Spot ₹{regDetails.totalAmount} &amp; Check In
-                        </Button>
-
-                        {/* Option 2: Verify Claimed Ref (if attendee proves UPI screenshot on phone) */}
-                        <Button
-                          onClick={() => {
-                            verifyPaymentMutation.mutate(regDetails.id);
-                            checkInMutation.mutate(regDetails.id);
-                          }}
-                          disabled={verifyPaymentMutation.isPending || checkInMutation.isPending}
-                          className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-2.5 shadow-sm flex items-center justify-center gap-1.5"
-                        >
-                          <CheckCircle className="w-4 h-4" /> Verify Proof &amp; Check In
-                        </Button>
-                      </div>
-                    </div>
-
-                    {/* Option 3: Reject Pass / Deny Entry */}
-                    {regDetails.status !== 'REJECTED' && (
-                      <Button
-                        onClick={() => rejectMutation.mutate(regDetails.id)}
-                        disabled={rejectMutation.isPending}
-                        variant="outline"
-                        className="w-full border-rose-300 text-rose-600 hover:bg-rose-50 font-bold text-xs py-2"
-                      >
-                        <XCircle className="w-4 h-4 mr-1.5" /> Reject Pass / Deny Entry
-                      </Button>
                     )}
                   </div>
                 )}

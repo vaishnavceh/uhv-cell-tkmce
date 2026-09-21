@@ -418,8 +418,13 @@ export class EventsService {
       }
     }
 
-    const totalAmount = event.isPaid ? ((Number(event.ticketPrice) || 0) * requestedSeats) : 0;
-    const paymentStatus = event.isPaid ? (dto.paymentStatus || 'PENDING') : 'FREE';
+    const isEventPaid = Boolean(event.isPaid || Number(event.ticketPrice) > 0 || Number(dto.totalAmount) > 0);
+    const totalAmount = isEventPaid
+      ? (Number(dto.totalAmount) || (Number(event.ticketPrice) || 0) * requestedSeats)
+      : 0;
+    const paymentStatus = isEventPaid
+      ? (dto.paymentStatus && dto.paymentStatus !== 'FREE' ? dto.paymentStatus : 'PENDING')
+      : 'FREE';
 
     const paymentReference = dto.paymentReference || dto.uploadReference || null;
 
@@ -568,11 +573,31 @@ export class EventsService {
     const reg = await this.prisma.eventRegistration.findUnique({ where: { id: regId } });
     if (!reg) throw new NotFoundException('Registration not found');
     if (reg.checkedIn) {
-      return { ...reg, alreadyCheckedIn: true };
+      return this.verifyRegistration(regId).then((r) => ({ ...r, alreadyCheckedIn: true }));
     }
     const updated = await this.prisma.eventRegistration.update({
       where: { id: regId },
       data: { checkedIn: true, checkedInAt: new Date() },
+      include: {
+        event: {
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+            eventDate: true,
+            startTime: true,
+            endTime: true,
+            venue: true,
+            category: true,
+            isPaid: true,
+            ticketPrice: true,
+            status: true,
+            collaborators: true,
+            coordinatorName: true,
+            coordinatorPhone: true,
+          },
+        },
+      },
     });
     return { ...updated, alreadyCheckedIn: false };
   }
@@ -583,6 +608,26 @@ export class EventsService {
     return this.prisma.eventRegistration.update({
       where: { id: regId },
       data: { paymentStatus: status },
+      include: {
+        event: {
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+            eventDate: true,
+            startTime: true,
+            endTime: true,
+            venue: true,
+            category: true,
+            isPaid: true,
+            ticketPrice: true,
+            status: true,
+            collaborators: true,
+            coordinatorName: true,
+            coordinatorPhone: true,
+          },
+        },
+      },
     });
   }
 
