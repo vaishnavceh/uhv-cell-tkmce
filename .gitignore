@@ -32,3 +32,13 @@ prisma/seed.js
 /uploads/
 docker-volumes/
 EXECOM_UHV/
+
+# Android & Mobile
+.gradle/
+*.apk
+*.aab
+apps/mobile/android/local.properties
+apps/mobile/android/.gradle/
+apps/mobile/android/app/build/
+apps/mobile/android/build/
+apps/mobile/.expo/
