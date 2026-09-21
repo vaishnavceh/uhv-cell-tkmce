@@ -135,6 +135,9 @@ export interface EventItem {
   enableInternalReg: boolean;
   registrationUploadLink?: string | null;
   registrationNotes?: string | null;
+  registrationEndDate?: string | null;
+  registrationCapacity?: number | null;
+  isRegistrationClosed: boolean;
   status: EventStatus;
   featured: boolean;
   published: boolean;

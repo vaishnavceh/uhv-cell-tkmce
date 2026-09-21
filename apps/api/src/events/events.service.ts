@@ -125,6 +125,9 @@ export class EventsService {
         enableInternalReg: dto.enableInternalReg ?? false,
         registrationUploadLink: dto.registrationUploadLink || null,
         registrationNotes: dto.registrationNotes || null,
+        registrationEndDate: dto.registrationEndDate ? new Date(dto.registrationEndDate) : null,
+        registrationCapacity: dto.registrationCapacity ? Number(dto.registrationCapacity) : null,
+        isRegistrationClosed: dto.isRegistrationClosed ?? false,
         status: dto.status || EventStatus.UPCOMING,
         featured: dto.featured ?? false,
         published: dto.published ?? true,
@@ -150,6 +153,12 @@ export class EventsService {
     }
     if (dto.eventDate) {
       data.eventDate = new Date(dto.eventDate);
+    }
+    if (dto.registrationEndDate !== undefined) {
+      data.registrationEndDate = dto.registrationEndDate ? new Date(dto.registrationEndDate) : null;
+    }
+    if (dto.registrationCapacity !== undefined) {
+      data.registrationCapacity = dto.registrationCapacity ? Number(dto.registrationCapacity) : null;
     }
 
     const updated = await this.prisma.event.update({
@@ -186,9 +195,37 @@ export class EventsService {
   // --- Registrations ---
 
   async createRegistration(eventId: string, dto: any) {
-    const event = await this.findOne(eventId);
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      include: {
+        _count: {
+          select: {
+            registrations: {
+              where: { status: { in: ['APPROVED', 'PENDING'] } },
+            },
+          },
+        },
+      },
+    });
+
+    if (!event) {
+      throw new NotFoundException('Event not found');
+    }
+
     if (!event.enableInternalReg) {
       throw new ConflictException('Internal registration is not enabled for this event.');
+    }
+
+    if (event.isRegistrationClosed) {
+      throw new ConflictException('Registration has been closed by the organizer.');
+    }
+
+    if (event.registrationEndDate && new Date() > new Date(event.registrationEndDate)) {
+      throw new ConflictException('Registration deadline has passed.');
+    }
+
+    if (event.registrationCapacity && event._count.registrations >= event.registrationCapacity) {
+      throw new ConflictException('Registration has reached maximum capacity.');
     }
 
     return this.prisma.eventRegistration.create({

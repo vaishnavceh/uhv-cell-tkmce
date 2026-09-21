@@ -39,6 +39,9 @@ export const EventsManager: React.FC = () => {
     enableInternalReg: false,
     registrationUploadLink: '',
     registrationNotes: '',
+    registrationEndDate: '',
+    registrationCapacity: '',
+    isRegistrationClosed: false,
     status: EventStatus.UPCOMING,
     featured: false,
     published: true,
@@ -56,9 +59,11 @@ export const EventsManager: React.FC = () => {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const payload = {
+      const payload: any = {
         ...formData,
         eventDate: new Date(formData.eventDate).toISOString(),
+        registrationCapacity: formData.registrationCapacity ? Number(formData.registrationCapacity) : null,
+        registrationEndDate: formData.registrationEndDate ? new Date(formData.registrationEndDate).toISOString() : null,
       };
       if (editingItem) {
         await apiClient.patch(`/events/${editingItem.id}`, payload);
@@ -103,6 +108,9 @@ export const EventsManager: React.FC = () => {
       enableInternalReg: false,
       registrationUploadLink: '',
       registrationNotes: '',
+      registrationEndDate: '',
+      registrationCapacity: '',
+      isRegistrationClosed: false,
       status: EventStatus.UPCOMING,
       featured: false,
       published: true,
@@ -116,12 +124,32 @@ export const EventsManager: React.FC = () => {
 
   const handleOpenEdit = (item: EventItem) => {
     setEditingItem(item);
+    
+    // Format dates safely for local inputs
+    let safeRegDate = '';
+    if (item.registrationEndDate) {
+      try {
+        safeRegDate = new Date(item.registrationEndDate).toISOString().slice(0, 16);
+      } catch (e) {
+        safeRegDate = '';
+      }
+    }
+
+    let safeEventDate = '';
+    if (item.eventDate) {
+      try {
+        safeEventDate = new Date(item.eventDate).toISOString().split('T')[0];
+      } catch (e) {
+        safeEventDate = '';
+      }
+    }
+
     setFormData({
       title: item.title,
       slug: item.slug,
       description: item.description,
       shortDescription: item.shortDescription || '',
-      eventDate: item.eventDate ? new Date(item.eventDate).toISOString().split('T')[0] : '',
+      eventDate: safeEventDate,
       startTime: item.startTime || '',
       endTime: item.endTime || '',
       venue: item.venue,
@@ -131,6 +159,9 @@ export const EventsManager: React.FC = () => {
       enableInternalReg: item.enableInternalReg || false,
       registrationUploadLink: item.registrationUploadLink || '',
       registrationNotes: item.registrationNotes || '',
+      registrationEndDate: safeRegDate,
+      registrationCapacity: item.registrationCapacity ? String(item.registrationCapacity) : '',
+      isRegistrationClosed: item.isRegistrationClosed || false,
       status: item.status,
       featured: item.featured,
       published: item.published,
@@ -435,6 +466,33 @@ export const EventsManager: React.FC = () => {
 
             {formData.enableInternalReg && (
               <>
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    label="Registration Deadline (Optional)"
+                    type="datetime-local"
+                    value={formData.registrationEndDate}
+                    onChange={(e) => setFormData({ ...formData, registrationEndDate: e.target.value })}
+                  />
+                  <Input
+                    label="Max Capacity (Optional)"
+                    type="number"
+                    min="1"
+                    value={formData.registrationCapacity}
+                    onChange={(e) => setFormData({ ...formData, registrationCapacity: e.target.value })}
+                    placeholder="e.g. 50"
+                  />
+                </div>
+                
+                <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-red-700 bg-red-50 p-2 rounded border border-red-200">
+                  <input
+                    type="checkbox"
+                    checked={formData.isRegistrationClosed}
+                    onChange={(e) => setFormData({ ...formData, isRegistrationClosed: e.target.checked })}
+                    className="rounded text-red-600 focus:ring-red-500 w-4 h-4"
+                  />
+                  <span>Force Close Registrations Now (Manual Kill Switch)</span>
+                </label>
+
                 <Input
                   label="External Upload Link (e.g. Google Drive Folder)"
                   value={formData.registrationUploadLink}

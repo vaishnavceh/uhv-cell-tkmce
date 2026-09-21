@@ -95,6 +95,20 @@ export class CreateEventDto {
   @IsOptional()
   @IsString()
   registrationNotes?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  registrationEndDate?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  registrationCapacity?: number;
+
+  @ApiPropertyOptional({ default: false })
+  @IsOptional()
+  @IsBoolean()
+  isRegistrationClosed?: boolean;
 }
 
 export class UpdateEventDto {
@@ -182,6 +196,20 @@ export class UpdateEventDto {
   @IsOptional()
   @IsString()
   registrationNotes?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  registrationEndDate?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  registrationCapacity?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  isRegistrationClosed?: boolean;
 }
 
 export class CreateEventRegistrationDto {

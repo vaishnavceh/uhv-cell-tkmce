@@ -131,6 +131,9 @@ model Event {
   enableInternalReg     Boolean             @default(false)
   registrationUploadLink String?
   registrationNotes     String?
+  registrationEndDate   DateTime?
+  registrationCapacity  Int?
+  isRegistrationClosed  Boolean             @default(false)
   status                EventStatus         @default(UPCOMING)
   featured              Boolean             @default(false)
   published             Boolean             @default(true)

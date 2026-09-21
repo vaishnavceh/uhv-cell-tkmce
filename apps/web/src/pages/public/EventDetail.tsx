@@ -41,6 +41,11 @@ export const EventDetail: React.FC = () => {
     );
   }
 
+  const isRegistrationOpen = 
+    event.enableInternalReg && 
+    !event.isRegistrationClosed && 
+    (!event.registrationEndDate || new Date() <= new Date(event.registrationEndDate));
+
   return (
     <div className="py-12 bg-institutional-warm min-h-screen">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
@@ -123,7 +128,13 @@ export const EventDetail: React.FC = () => {
             </span>
 
             {event.enableInternalReg ? (
-              <EventRegistrationForm event={event} />
+              isRegistrationOpen ? (
+                <EventRegistrationForm event={event} />
+              ) : (
+                <div className="bg-red-50 border border-red-200 text-red-800 p-6 rounded-lg text-center font-bold print:hidden">
+                  Registrations for this event are currently closed.
+                </div>
+              )
             ) : event.registrationUrl ? (
               <a
                 href={event.registrationUrl}
