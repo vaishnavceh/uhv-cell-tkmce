@@ -44,6 +44,7 @@ const UsersManager = lazy(() => import('./pages/admin/UsersManager').then(m => (
 const RolesViewer = lazy(() => import('./pages/admin/RolesViewer').then(m => ({ default: m.RolesViewer })));
 const AuditLogsViewer = lazy(() => import('./pages/admin/AuditLogsViewer').then(m => ({ default: m.AuditLogsViewer })));
 const SettingsManager = lazy(() => import('./pages/admin/SettingsManager').then(m => ({ default: m.SettingsManager })));
+const DatabaseManager = lazy(() => import('./pages/admin/DatabaseManager').then(m => ({ default: m.DatabaseManager })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -131,7 +132,16 @@ export const App: React.FC = () => {
                       </ProtectedRoute>
                     }
                   />
+                  <Route
+                    path="database"
+                    element={
+                      <ProtectedRoute allowedRoles={[RoleName.SUPER_ADMIN]}>
+                        <DatabaseManager />
+                      </ProtectedRoute>
+                    }
+                  />
                   <Route path="roles" element={<RolesViewer />} />
+
                   <Route path="audit-logs" element={<AuditLogsViewer />} />
                   <Route path="settings" element={<SettingsManager />} />
                 </Route>

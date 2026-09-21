@@ -16,6 +16,7 @@ import {
   ShieldAlert,
   History,
   Settings,
+  Database,
   LogOut,
   Menu,
   X,
@@ -57,7 +58,12 @@ export const AdminLayout: React.FC = () => {
       label: 'Administration',
       isHeading: true,
     },
-    ...(isSuperAdmin ? [{ label: 'User Accounts', path: '/admin/users', icon: UserCheck }] : []),
+    ...(isSuperAdmin
+      ? [
+          { label: 'User Accounts', path: '/admin/users', icon: UserCheck },
+          { label: 'Database & Cleaning', path: '/admin/database', icon: Database },
+        ]
+      : []),
     { label: 'Roles & Permissions', path: '/admin/roles', icon: ShieldAlert },
     { label: 'Audit Trail', path: '/admin/audit-logs', icon: History },
     { label: 'Site Settings', path: '/admin/settings', icon: Settings },
