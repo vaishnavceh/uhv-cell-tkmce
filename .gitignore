@@ -31,3 +31,4 @@ prisma/seed.js
 # Uploads
 uploads/
 docker-volumes/
+EXECOM_UHV/
