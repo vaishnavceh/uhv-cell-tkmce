@@ -117,6 +117,27 @@ export const ScannerScreen: React.FC<ScannerScreenProps> = ({ user, onLogout }) 
     return clean.trim();
   };
 
+  const checkAuthError = (err: any): boolean => {
+    if (err?.response?.status === 401) {
+      triggerHaptic('error');
+      Alert.alert(
+        'Session Expired',
+        'Your coordinator login session has expired. Please sign in again to continue scanning.',
+        [
+          {
+            text: 'Sign In Again',
+            onPress: async () => {
+              await clearStoredAuth();
+              onLogout();
+            },
+          },
+        ]
+      );
+      return true;
+    }
+    return false;
+  };
+
   const handleLookup = async (idToLookUp?: string) => {
     const targetId = cleanInputId(idToLookUp || searchId);
     if (!targetId) {
@@ -148,6 +169,7 @@ export const ScannerScreen: React.FC<ScannerScreenProps> = ({ user, onLogout }) 
         triggerHaptic('success');
       }
     } catch (err: any) {
+      if (checkAuthError(err)) return;
       triggerHaptic('error');
       const msg = err?.response?.data?.message || err?.message || 'Registration not found with that ID.';
       Alert.alert('Applicant Not Found', Array.isArray(msg) ? msg.join(', ') : msg);
@@ -185,6 +207,7 @@ export const ScannerScreen: React.FC<ScannerScreenProps> = ({ user, onLogout }) 
       recordScanInHistory(who, '✅ Checked In', activeRecord.totalAmount);
       Alert.alert('Entry Granted', `Welcome ${who}! Check-in recorded.`);
     } catch (err: any) {
+      if (checkAuthError(err)) return;
       triggerHaptic('error');
       Alert.alert('Check-In Failed', err?.response?.data?.message || 'Could not check in attendee.');
     } finally {
@@ -213,6 +236,7 @@ export const ScannerScreen: React.FC<ScannerScreenProps> = ({ user, onLogout }) 
               recordScanInHistory(activeRecord.fullName, '💵 Spot Cash & In', dueAmount);
               Alert.alert('Cash Confirmed', `Spot cash recorded for ${activeRecord.fullName}. Entry authorized.`);
             } catch (err: any) {
+              if (checkAuthError(err)) return;
               triggerHaptic('error');
               Alert.alert('Error', err?.response?.data?.message || 'Could not record cash payment.');
             } finally {
@@ -238,6 +262,7 @@ export const ScannerScreen: React.FC<ScannerScreenProps> = ({ user, onLogout }) 
       setSpotUtr('');
       Alert.alert('UPI Confirmed', `Spot UPI payment confirmed for ${activeRecord.fullName}. Entry authorized.`);
     } catch (err: any) {
+      if (checkAuthError(err)) return;
       triggerHaptic('error');
       Alert.alert('Error', err?.response?.data?.message || 'Could not record UPI payment.');
     } finally {
@@ -256,6 +281,7 @@ export const ScannerScreen: React.FC<ScannerScreenProps> = ({ user, onLogout }) 
       recordScanInHistory(activeRecord.fullName, '✅ Payment Verified', activeRecord.totalAmount);
       Alert.alert('Payment Verified', `Payment status updated to VERIFIED for ${activeRecord.fullName}.`);
     } catch (err: any) {
+      if (checkAuthError(err)) return;
       triggerHaptic('error');
       Alert.alert('Error', err?.response?.data?.message || 'Could not verify payment.');
     } finally {
@@ -283,6 +309,7 @@ export const ScannerScreen: React.FC<ScannerScreenProps> = ({ user, onLogout }) 
               recordScanInHistory(activeRecord.fullName, '❌ Pass Rejected', activeRecord.totalAmount);
               Alert.alert('Pass Rejected', 'Entry has been denied for this pass.');
             } catch (err: any) {
+              if (checkAuthError(err)) return;
               Alert.alert('Error', err?.response?.data?.message || 'Could not reject pass.');
             } finally {
               setActionLoading(false);

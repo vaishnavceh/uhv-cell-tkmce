@@ -47,11 +47,16 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
         data?.tokens?.accessToken ||
         payload?.accessToken ||
         data?.accessToken;
+      const refreshToken =
+        payload?.tokens?.refreshToken ||
+        data?.tokens?.refreshToken ||
+        payload?.refreshToken ||
+        data?.refreshToken;
       const user = payload?.user || data?.user || { email };
 
       if (token) {
         const finalServerUrl = await getServerUrl();
-        await saveStoredAuth(token, user);
+        await saveStoredAuth(token, user, refreshToken);
         onLoginSuccess(token, user, finalServerUrl);
       } else {
         throw new Error('Invalid authentication response from server.');
