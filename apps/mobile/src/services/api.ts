@@ -107,9 +107,12 @@ export const api = {
     return res.data;
   },
 
-  checkIn: async (regId: string): Promise<RegistrationRecord> => {
+  checkIn: async (
+    regId: string,
+    options?: { memberIndex?: number; memberName?: string; admitAll?: boolean },
+  ): Promise<RegistrationRecord> => {
     const client = await getApiClient();
-    const res = await client.patch(`/events/registrations/${regId.trim()}/check-in`);
+    const res = await client.patch(`/events/registrations/${regId.trim()}/check-in`, options || {});
     return res.data;
   },
 
@@ -117,11 +120,14 @@ export const api = {
     regId: string,
     paymentMethod: 'CASH' | 'UPI' = 'CASH',
     reference?: string,
+    options?: { memberIndex?: number; admitAll?: boolean },
   ): Promise<RegistrationRecord> => {
     const client = await getApiClient();
     const res = await client.patch(`/events/registrations/${regId.trim()}/spot-payment`, {
       paymentMethod,
       reference,
+      memberIndex: options?.memberIndex,
+      admitAll: options?.admitAll,
     });
     return res.data;
   },

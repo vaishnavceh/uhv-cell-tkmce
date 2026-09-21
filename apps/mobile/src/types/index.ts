@@ -18,6 +18,15 @@ export interface EventMetadata {
   paymentInstructions?: string;
 }
 
+export interface PartnerMemberItem {
+  index: number;
+  name: string;
+  isLead: boolean;
+  checkedIn: boolean;
+  checkedInAt?: string;
+  isScannedTarget?: boolean;
+}
+
 export interface RegistrationRecord {
   id: string;
   eventId: string;
@@ -29,7 +38,7 @@ export interface RegistrationRecord {
   ticketType: string;
   groupSize: number;
   groupName?: string;
-  groupMembers?: string[];
+  groupMembers?: any;
   totalAmount: number;
   paymentStatus: 'FREE' | 'PENDING' | 'PAID' | 'VERIFIED' | string;
   paymentReference?: string;
@@ -38,6 +47,14 @@ export interface RegistrationRecord {
   checkedInAt?: string;
   alreadyCheckedIn?: boolean;
   event?: EventMetadata;
+  customData?: any;
+  isGroup?: boolean;
+  partnerRoster?: PartnerMemberItem[];
+  targetMemberIndex?: number | null;
+  targetMemberName?: string | null;
+  checkedInCount?: number;
+  totalMembers?: number;
+  isAllCheckedIn?: boolean;
 }
 
 export interface ScanHistoryItem {

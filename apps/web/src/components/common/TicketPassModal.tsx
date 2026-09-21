@@ -18,16 +18,39 @@ export const TicketPassModal: React.FC<TicketPassModalProps> = ({
 }) => {
   const ticketRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [selectedMemberIndex, setSelectedMemberIndex] = useState<number | 'all'>('all');
 
   if (!isOpen || !registration || !event) return null;
 
   const regCode = `UHV-${(registration.id || 'TICKET').slice(0, 8).toUpperCase()}`;
-  const isGroup = registration.ticketType === 'GROUP' || (registration.groupSize && registration.groupSize > 1);
+  const totalGroup = Math.max(1, Number(registration.groupSize) || 1);
+  const isGroup = registration.ticketType === 'GROUP' || totalGroup > 1;
   const membersList: string[] = Array.isArray(registration.groupMembers) ? registration.groupMembers : [];
-  
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
-    `UHVPASS::${registration.id}`
-  )}`;
+
+  let currentAttendeeName = registration.fullName;
+  let currentAttendeeRole = isGroup ? 'Team Lead' : 'Lead Attendee';
+  let qrPayload = `UHVPASS::${registration.id}`;
+  let admitText = isGroup ? `ADMIT ${totalGroup}` : 'ADMIT ONE';
+  let passBadgeText = isGroup ? `Group Pass (${totalGroup})` : 'Entry Pass';
+
+  if (isGroup && selectedMemberIndex !== 'all') {
+    if (selectedMemberIndex === 0) {
+      currentAttendeeName = registration.fullName;
+      currentAttendeeRole = 'Team Lead';
+      qrPayload = `UHVPASS::${registration.id}::0`;
+      admitText = `ADMIT ONE (1/${totalGroup})`;
+      passBadgeText = `Lead Pass (1 of ${totalGroup})`;
+    } else {
+      const memberIdx = selectedMemberIndex - 1;
+      currentAttendeeName = membersList[memberIdx] || `Partner #${selectedMemberIndex + 1}`;
+      currentAttendeeRole = `Team Member (Lead: ${registration.fullName})`;
+      qrPayload = `UHVPASS::${registration.id}::${selectedMemberIndex}`;
+      admitText = `ADMIT ONE (${selectedMemberIndex + 1}/${totalGroup})`;
+      passBadgeText = `Member Pass (${selectedMemberIndex + 1} of ${totalGroup})`;
+    }
+  }
+
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrPayload)}`;
 
   const totalFeeText = event.isPaid
     ? `₹${registration.totalAmount || (event.ticketPrice || 0) * (registration.groupSize || 1)}`
@@ -47,8 +70,9 @@ export const TicketPassModal: React.FC<TicketPassModalProps> = ({
         backgroundColor: '#090d16',
       });
       const cleanSlug = (event.slug || 'uhv-event').replace(/[^a-zA-Z0-9_-]/g, '-').toLowerCase();
+      const suffix = isGroup && selectedMemberIndex !== 'all' ? `-member-${selectedMemberIndex + 1}` : '';
       const link = document.createElement('a');
-      link.download = `${cleanSlug}-pass-${regCode.toLowerCase()}.png`;
+      link.download = `${cleanSlug}-pass${suffix}-${regCode.toLowerCase()}.png`;
       link.href = dataUrl;
       document.body.appendChild(link);
       link.click();
@@ -122,6 +146,51 @@ export const TicketPassModal: React.FC<TicketPassModalProps> = ({
           </div>
         </div>
 
+        {/* Multi-Partner Ticket Pass Switcher */}
+        {isGroup && (
+          <div className="px-4 py-2.5 bg-slate-950/90 border-b border-slate-800 flex flex-wrap items-center gap-2 print:hidden shrink-0">
+            <span className="text-xs font-bold text-slate-400 mr-1 flex items-center gap-1">
+              <Users className="w-3.5 h-3.5 text-emerald-400" /> Select Pass:
+            </span>
+            <button
+              type="button"
+              onClick={() => setSelectedMemberIndex('all')}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
+                selectedMemberIndex === 'all'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+              }`}
+            >
+              👥 Team Pass ({totalGroup})
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedMemberIndex(0)}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
+                selectedMemberIndex === 0
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+              }`}
+            >
+              1. {registration.fullName} (Lead)
+            </button>
+            {membersList.map((m: string, idx: number) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => setSelectedMemberIndex(idx + 1)}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
+                  selectedMemberIndex === idx + 1
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                }`}
+              >
+                {idx + 2}. {m}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Scrollable Ticket Display Area */}
         <div className="p-4 sm:p-6 overflow-x-auto overflow-y-auto flex-1 flex justify-center items-center bg-[#070a10]">
           {/* CONCERT-STYLE TICKET STUB */}
@@ -177,7 +246,7 @@ export const TicketPassModal: React.FC<TicketPassModalProps> = ({
 
                     <div className="shrink-0">
                       <span className="text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-lg bg-emerald-950/90 border border-emerald-500/50 text-emerald-300 tracking-wider">
-                        {isGroup ? `Group Pass (${registration.groupSize || 2})` : 'Entry Pass'}
+                        {passBadgeText}
                       </span>
                     </div>
                   </div>
@@ -226,8 +295,8 @@ export const TicketPassModal: React.FC<TicketPassModalProps> = ({
                 <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-2">
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                     <div>
-                      <span className="text-[9px] uppercase font-bold text-slate-400 block">Lead Attendee</span>
-                      <span className="font-bold text-white truncate block">{registration.fullName}</span>
+                      <span className="text-[9px] uppercase font-bold text-slate-400 block">{currentAttendeeRole}</span>
+                      <span className="font-bold text-white truncate block">{currentAttendeeName}</span>
                     </div>
                     <div>
                       <span className="text-[9px] uppercase font-bold text-slate-400 block">Contact</span>
@@ -249,7 +318,7 @@ export const TicketPassModal: React.FC<TicketPassModalProps> = ({
                   {isGroup && membersList.length > 0 && (
                     <div className="pt-2 border-t border-slate-800/80 text-[11px] text-slate-300">
                       <span className="font-bold text-slate-400 mr-1">Roster:</span>
-                      {membersList.join(', ')}
+                      {registration.fullName} (Lead), {membersList.join(', ')}
                     </div>
                   )}
 
@@ -278,7 +347,7 @@ export const TicketPassModal: React.FC<TicketPassModalProps> = ({
             <div className="w-48 sm:w-56 bg-slate-950 p-6 flex flex-col justify-between items-center text-center relative border-l border-slate-800/60">
               <div className="space-y-1">
                 <span className="text-[9px] uppercase tracking-widest font-black text-emerald-400 block">
-                  ADMIT ONE
+                  {admitText}
                 </span>
                 <span className="text-[8px] uppercase font-bold text-slate-400 block">
                   UHV CELL • TKMCE

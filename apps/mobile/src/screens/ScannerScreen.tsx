@@ -49,6 +49,7 @@ import {
   Check,
   QrCode,
   ExternalLink,
+  UserCheck,
 } from 'lucide-react-native';
 
 interface ScannerScreenProps {
@@ -106,10 +107,10 @@ export const ScannerScreen: React.FC<ScannerScreenProps> = ({ user, onLogout }) 
   const cleanInputId = (raw: string): string => {
     let clean = raw.trim();
     if (clean.startsWith('UHVPASS::')) {
-      clean = clean.split('::')[1];
+      clean = clean.replace(/^UHVPASS::/, '');
     } else {
       const uuidMatch = clean.match(/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/i);
-      if (uuidMatch) {
+      if (uuidMatch && !clean.includes('::')) {
         clean = uuidMatch[0];
       }
     }
@@ -139,7 +140,7 @@ export const ScannerScreen: React.FC<ScannerScreenProps> = ({ user, onLogout }) 
       );
       const isVerified = record.paymentStatus === 'VERIFIED' || record.paymentStatus === 'PAID';
 
-      if (record.checkedIn) {
+      if (record.isAllCheckedIn || record.checkedIn) {
         triggerHaptic('warning');
       } else if (isPaid && !isVerified) {
         triggerHaptic('error');
@@ -172,16 +173,17 @@ export const ScannerScreen: React.FC<ScannerScreenProps> = ({ user, onLogout }) 
     }, 1200);
   };
 
-  // 1. Regular Check-In
-  const handleCheckIn = async () => {
+  // 1. Regular Check-In (Supports Individual or Partner Member)
+  const handleCheckIn = async (options?: { memberIndex?: number; memberName?: string; admitAll?: boolean }) => {
     if (!activeRecord) return;
     setActionLoading(true);
     try {
-      const updated = await api.checkIn(activeRecord.id);
-      setActiveRecord((prev) => (prev ? { ...prev, ...updated, checkedIn: true, checkedInAt: new Date().toISOString() } : null));
+      const updated = await api.checkIn(activeRecord.id, options);
+      setActiveRecord((prev) => (prev ? { ...prev, ...updated } : null));
       triggerHaptic('success');
-      recordScanInHistory(activeRecord.fullName, '✅ Checked In', activeRecord.totalAmount);
-      Alert.alert('Entry Granted', `Welcome ${activeRecord.fullName}! Check-in recorded.`);
+      const who = options?.memberName || (options?.admitAll ? 'All Remaining Partners' : activeRecord.fullName);
+      recordScanInHistory(who, '✅ Checked In', activeRecord.totalAmount);
+      Alert.alert('Entry Granted', `Welcome ${who}! Check-in recorded.`);
     } catch (err: any) {
       triggerHaptic('error');
       Alert.alert('Check-In Failed', err?.response?.data?.message || 'Could not check in attendee.');
@@ -205,8 +207,8 @@ export const ScannerScreen: React.FC<ScannerScreenProps> = ({ user, onLogout }) 
           onPress: async () => {
             setActionLoading(true);
             try {
-              const updated = await api.spotPayment(activeRecord.id, 'CASH');
-              setActiveRecord((prev) => (prev ? { ...prev, ...updated, paymentStatus: 'VERIFIED', checkedIn: true, checkedInAt: new Date().toISOString() } : null));
+              const updated = await api.spotPayment(activeRecord.id, 'CASH', undefined, { admitAll: true });
+              setActiveRecord((prev) => (prev ? { ...prev, ...updated, paymentStatus: 'VERIFIED' } : null));
               triggerHaptic('success');
               recordScanInHistory(activeRecord.fullName, '💵 Spot Cash & In', dueAmount);
               Alert.alert('Cash Confirmed', `Spot cash recorded for ${activeRecord.fullName}. Entry authorized.`);
@@ -228,8 +230,8 @@ export const ScannerScreen: React.FC<ScannerScreenProps> = ({ user, onLogout }) 
     const dueAmount = activeRecord.totalAmount || Number(activeRecord.event?.ticketPrice) || 0;
     setActionLoading(true);
     try {
-      const updated = await api.spotPayment(activeRecord.id, 'UPI', spotUtr ? spotUtr.trim() : undefined);
-      setActiveRecord((prev) => (prev ? { ...prev, ...updated, paymentStatus: 'VERIFIED', checkedIn: true, checkedInAt: new Date().toISOString() } : null));
+      const updated = await api.spotPayment(activeRecord.id, 'UPI', spotUtr ? spotUtr.trim() : undefined, { admitAll: true });
+      setActiveRecord((prev) => (prev ? { ...prev, ...updated, paymentStatus: 'VERIFIED' } : null));
       triggerHaptic('success');
       recordScanInHistory(activeRecord.fullName, '📱 Spot UPI & In', dueAmount);
       setUpiModalVisible(false);
@@ -603,7 +605,31 @@ export const ScannerScreen: React.FC<ScannerScreenProps> = ({ user, onLogout }) 
               )}
 
               {/* CHECK-IN STATUS BANNER */}
-              {activeRecord.checkedIn ? (
+              {isGroup ? (
+                activeRecord.isAllCheckedIn || activeRecord.checkedIn ? (
+                  <View style={styles.alreadyCheckedInBanner}>
+                    <CheckCircle color="#10b981" size={22} />
+                    <View style={{ flex: 1, marginLeft: 10 }}>
+                      <Text style={styles.alreadyCheckedInTitle}>ALL TEAM MEMBERS CHECKED IN</Text>
+                      <Text style={styles.alreadyCheckedInSub}>
+                        All {activeRecord.totalMembers || activeRecord.groupSize || (activeRecord.partnerRoster ? activeRecord.partnerRoster.length : 1)} team members have entered the venue.
+                      </Text>
+                    </View>
+                  </View>
+                ) : (
+                  <View style={styles.groupProgressBanner}>
+                    <Users color="#38bdf8" size={22} />
+                    <View style={{ flex: 1, marginLeft: 10 }}>
+                      <Text style={styles.groupProgressTitle}>
+                        TEAM ADMISSION: {activeRecord.checkedInCount || 0} OF {activeRecord.totalMembers || activeRecord.groupSize || (activeRecord.partnerRoster ? activeRecord.partnerRoster.length : 1)} ADMITTED
+                      </Text>
+                      <Text style={styles.groupProgressSub}>
+                        {(activeRecord.totalMembers || activeRecord.groupSize || (activeRecord.partnerRoster ? activeRecord.partnerRoster.length : 1)) - (activeRecord.checkedInCount || 0)} partner(s) remaining outside.
+                      </Text>
+                    </View>
+                  </View>
+                )
+              ) : activeRecord.checkedIn ? (
                 <View style={styles.alreadyCheckedInBanner}>
                   <AlertCircle color="#d97706" size={22} />
                   <View style={{ flex: 1, marginLeft: 10 }}>
@@ -621,6 +647,35 @@ export const ScannerScreen: React.FC<ScannerScreenProps> = ({ user, onLogout }) 
                 <View style={styles.readyCheckInBanner}>
                   <Check color="#10b981" size={20} />
                   <Text style={styles.readyCheckInText}>Ready for Gate Entry Check-In</Text>
+                </View>
+              )}
+
+              {/* TARGET SCANNED PARTNER SPOTLIGHT */}
+              {Boolean(activeRecord.targetMemberName) && (
+                <View style={styles.scannedPartnerCard}>
+                  <View style={styles.scannedPartnerHeader}>
+                    <QrCode color="#38bdf8" size={18} />
+                    <Text style={styles.scannedPartnerBadge}>SCANNED PARTNER PASS</Text>
+                  </View>
+                  <Text style={styles.scannedPartnerName}>{activeRecord.targetMemberName}</Text>
+                  <Text style={styles.scannedPartnerSub}>
+                    Partner #{((activeRecord.targetMemberIndex ?? 0) + 1)} of Team Pass
+                  </Text>
+                  {activeRecord.alreadyCheckedIn ? (
+                    <View style={styles.partnerCheckedInBadge}>
+                      <CheckCircle color="#10b981" size={16} />
+                      <Text style={styles.partnerCheckedInText}>This partner is already checked in</Text>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      style={[styles.admitTargetBtn, actionLoading && styles.btnDisabled]}
+                      onPress={() => handleCheckIn({ memberIndex: activeRecord.targetMemberIndex ?? undefined, memberName: activeRecord.targetMemberName ?? undefined })}
+                      disabled={actionLoading}
+                    >
+                      <UserCheck color="#ffffff" size={18} />
+                      <Text style={styles.admitTargetBtnText}>Admit {activeRecord.targetMemberName}</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               )}
 
@@ -727,7 +782,75 @@ export const ScannerScreen: React.FC<ScannerScreenProps> = ({ user, onLogout }) 
                   <Text style={styles.groupNameText}>Group Name: {activeRecord.groupName}</Text>
                 )}
 
-                {membersList.length > 0 && (
+                {/* INTERACTIVE TEAM PARTNER ROSTER */}
+                {activeRecord.partnerRoster && activeRecord.partnerRoster.length > 0 ? (
+                  <View style={styles.groupMembersList}>
+                    <View style={styles.rosterHeaderRow}>
+                      <Text style={styles.membersHeading}>TEAM PARTNER ROSTER:</Text>
+                      <Text style={styles.rosterProgressBadge}>
+                        {activeRecord.checkedInCount || 0}/{activeRecord.totalMembers || activeRecord.partnerRoster.length} Inside
+                      </Text>
+                    </View>
+                    {activeRecord.partnerRoster.map((m) => (
+                      <View
+                        key={m.index}
+                        style={[
+                          styles.rosterItemCard,
+                          m.isScannedTarget && styles.rosterItemHighlighted,
+                        ]}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
+                            <Text style={styles.memberNumber}>{m.index + 1}.</Text>
+                            <Text style={styles.memberName}>{m.name}</Text>
+                            {m.isLead && (
+                              <View style={styles.leadBadge}>
+                                <Text style={styles.leadBadgeText}>Lead</Text>
+                              </View>
+                            )}
+                            {m.isScannedTarget && (
+                              <View style={styles.scannedBadge}>
+                                <Text style={styles.scannedBadgeText}>Scanned</Text>
+                              </View>
+                            )}
+                          </View>
+                          {m.checkedInAt && (
+                            <Text style={styles.memberSub}>
+                              Entered {new Date(m.checkedInAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </Text>
+                          )}
+                        </View>
+
+                        {m.checkedIn ? (
+                          <View style={styles.admittedBadge}>
+                            <Check color="#10b981" size={14} />
+                            <Text style={styles.admittedBadgeText}>Inside</Text>
+                          </View>
+                        ) : (
+                          <TouchableOpacity
+                            style={[styles.admitSingleBtn, actionLoading && styles.btnDisabled]}
+                            onPress={() => handleCheckIn({ memberIndex: m.index, memberName: m.name })}
+                            disabled={actionLoading}
+                          >
+                            <UserCheck color="#ffffff" size={14} />
+                            <Text style={styles.admitSingleBtnText}>Admit</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    ))}
+
+                    {!activeRecord.isAllCheckedIn && (
+                      <TouchableOpacity
+                        style={[styles.admitAllBtn, actionLoading && styles.btnDisabled]}
+                        onPress={() => handleCheckIn({ admitAll: true })}
+                        disabled={actionLoading}
+                      >
+                        <Users color="#ffffff" size={16} />
+                        <Text style={styles.admitAllBtnText}>Admit All Remaining Partners</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                ) : membersList.length > 0 ? (
                   <View style={styles.groupMembersList}>
                     <Text style={styles.membersHeading}>REGISTERED GROUP MEMBERS:</Text>
                     {membersList.map((m: any, idx: number) => {
@@ -746,16 +869,16 @@ export const ScannerScreen: React.FC<ScannerScreenProps> = ({ user, onLogout }) 
                       );
                     })}
                   </View>
-                )}
+                ) : null}
               </View>
 
               {/* ACTION BUTTON CONTROLS */}
               <View style={styles.actionsContainer}>
                 {/* 1. Normal Check-in (if already verified or free) */}
-                {!activeRecord.checkedIn && (isPaymentVerified || !isPaidEvent) && (
+                {(!activeRecord.checkedIn || (isGroup && !activeRecord.isAllCheckedIn)) && (isPaymentVerified || !isPaidEvent) && (
                   <TouchableOpacity
                     style={[styles.primaryActionBtn, actionLoading && styles.btnDisabled]}
-                    onPress={handleCheckIn}
+                    onPress={() => handleCheckIn(isGroup ? { admitAll: true } : undefined)}
                     disabled={actionLoading}
                   >
                     {actionLoading ? (
@@ -763,7 +886,9 @@ export const ScannerScreen: React.FC<ScannerScreenProps> = ({ user, onLogout }) 
                     ) : (
                       <>
                         <CheckCircle color="#ffffff" size={20} />
-                        <Text style={styles.primaryActionBtnText}>Check In Attendee</Text>
+                        <Text style={styles.primaryActionBtnText}>
+                          {isGroup ? 'Admit All Team Members' : 'Check In Attendee'}
+                        </Text>
                       </>
                     )}
                   </TouchableOpacity>
@@ -1257,6 +1382,87 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginLeft: 8,
   },
+  groupProgressBanner: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(14, 165, 233, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.4)',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+  },
+  groupProgressTitle: {
+    color: '#38bdf8',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  groupProgressSub: {
+    color: '#bae6fd',
+    fontSize: 12,
+    marginTop: 2,
+  },
+  scannedPartnerCard: {
+    backgroundColor: '#042f24',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1.5,
+    borderColor: '#38bdf8',
+    marginBottom: 16,
+  },
+  scannedPartnerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  scannedPartnerBadge: {
+    color: '#38bdf8',
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+    marginLeft: 6,
+  },
+  scannedPartnerName: {
+    color: '#ffffff',
+    fontSize: 17,
+    fontWeight: '900',
+    marginTop: 2,
+  },
+  scannedPartnerSub: {
+    color: '#94a3b8',
+    fontSize: 12,
+    marginTop: 2,
+    marginBottom: 10,
+  },
+  partnerCheckedInBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  partnerCheckedInText: {
+    color: '#34d399',
+    fontSize: 12,
+    fontWeight: '700',
+    marginLeft: 6,
+  },
+  admitTargetBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0284c7',
+    paddingVertical: 10,
+    borderRadius: 10,
+    marginTop: 4,
+  },
+  admitTargetBtnText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '800',
+    marginLeft: 6,
+  },
   infoSection: {
     backgroundColor: '#021812',
     borderRadius: 12,
@@ -1379,6 +1585,105 @@ const styles = StyleSheet.create({
   memberSub: {
     color: '#64748b',
     fontSize: 11,
+  },
+  rosterHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  rosterProgressBadge: {
+    color: '#34d399',
+    fontSize: 11,
+    fontWeight: '800',
+    backgroundColor: '#064e3b',
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+  },
+  rosterItemCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#03241b',
+    borderWidth: 1,
+    borderColor: '#064e3b',
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 8,
+  },
+  rosterItemHighlighted: {
+    borderColor: '#38bdf8',
+    backgroundColor: 'rgba(56, 189, 248, 0.08)',
+  },
+  leadBadge: {
+    backgroundColor: '#059669',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginLeft: 6,
+  },
+  leadBadgeText: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  scannedBadge: {
+    backgroundColor: '#0284c7',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginLeft: 6,
+  },
+  scannedBadgeText: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  admittedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+  },
+  admittedBadgeText: {
+    color: '#34d399',
+    fontSize: 11,
+    fontWeight: '700',
+    marginLeft: 4,
+  },
+  admitSingleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#059669',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  admitSingleBtnText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '800',
+    marginLeft: 4,
+  },
+  admitAllBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#064e3b',
+    borderWidth: 1,
+    borderColor: '#10b981',
+    paddingVertical: 10,
+    borderRadius: 10,
+    marginTop: 6,
+  },
+  admitAllBtnText: {
+    color: '#a7f3d0',
+    fontSize: 12,
+    fontWeight: '800',
+    marginLeft: 6,
   },
   actionsContainer: {
     marginTop: 6,

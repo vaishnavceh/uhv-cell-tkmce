@@ -469,8 +469,8 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
   const [paymentReference, setPaymentReference] = React.useState('');
   const [copiedUpi, setCopiedUpi] = React.useState(false);
   const [copiedAcc, setCopiedAcc] = React.useState(false);
-  const [copiedIfsc, setCopiedIfsc] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [activePassIndex, setActivePassIndex] = React.useState<number | 'all'>('all');
   const [successData, setSuccessData] = React.useState<any>(null);
   const [isDownloadingPng, setIsDownloadingPng] = React.useState(false);
   const [qrDataUrl, setQrDataUrl] = React.useState<string>('');
@@ -531,8 +531,10 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
   React.useEffect(() => {
     let isMounted = true;
     if (successData) {
-      // Encode just the registration ID for reliable admin scanner lookup
-      const qrPayload = `UHVPASS::${successData.id}`;
+      let qrPayload = `UHVPASS::${successData.id}`;
+      if (activePassIndex !== 'all') {
+        qrPayload = `UHVPASS::${successData.id}::${activePassIndex}`;
+      }
       const url = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrPayload)}`;
       fetch(url)
         .then((res) => res.blob())
@@ -552,7 +554,7 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
     return () => {
       isMounted = false;
     };
-  }, [successData, event.title]);
+  }, [successData, activePassIndex, event.title]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -635,8 +637,11 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
       });
       const regCode = `UHV-${(successData.id || 'TICKET').slice(0, 8).toUpperCase()}`;
       const cleanSlug = (event.slug || 'uhv-event').replace(/[^a-zA-Z0-9_-]/g, '-').toLowerCase();
+      const totalGroup = Math.max(1, Number(successData.groupSize) || 1);
+      const isGroup = successData.ticketType === 'GROUP' || totalGroup > 1;
+      const suffix = isGroup && activePassIndex !== 'all' ? `-member-${activePassIndex === 0 ? 'lead' : activePassIndex + 1}` : '';
       const link = document.createElement('a');
-      link.download = `${cleanSlug}-pass-${regCode.toLowerCase()}.png`;
+      link.download = `${cleanSlug}-pass${suffix}-${regCode.toLowerCase()}.png`;
       link.href = dataUrl;
       document.body.appendChild(link);
       link.click();
@@ -651,10 +656,32 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
 
   if (successData) {
     const regCode = `UHV-${(successData.id || 'TICKET').slice(0, 8).toUpperCase()}`;
-    const isGroup = successData.ticketType === 'GROUP' || (successData.groupSize && successData.groupSize > 1);
+    const totalGroup = Math.max(1, Number(successData.groupSize) || 1);
+    const isGroup = successData.ticketType === 'GROUP' || totalGroup > 1;
     const membersList: string[] = Array.isArray(successData.groupMembers) ? successData.groupMembers : [];
+    
+    let currentAttendeeName = successData.fullName;
+    let currentAttendeeRole = isGroup ? 'Team Lead' : 'Attendee';
+    let admitText = isGroup ? `ADMIT ${totalGroup}` : 'ADMIT ONE';
+    let passBadgeText = isGroup ? `Group Pass (${totalGroup})` : 'Entry Pass';
+
+    if (isGroup && activePassIndex !== 'all') {
+      if (activePassIndex === 0) {
+        currentAttendeeName = successData.fullName;
+        currentAttendeeRole = 'Team Lead';
+        admitText = `ADMIT ONE (1/${totalGroup})`;
+        passBadgeText = `Lead Pass (1 of ${totalGroup})`;
+      } else {
+        const memberIdx = activePassIndex - 1;
+        currentAttendeeName = membersList[memberIdx] || `Partner #${activePassIndex + 1}`;
+        currentAttendeeRole = `Team Member (Lead: ${successData.fullName})`;
+        admitText = `ADMIT ONE (${activePassIndex + 1}/${totalGroup})`;
+        passBadgeText = `Member Pass (${activePassIndex + 1} of ${totalGroup})`;
+      }
+    }
+
     const fallbackQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
-      `UHVPASS::${successData.id}`
+      `UHVPASS::${successData.id}${activePassIndex !== 'all' ? `::${activePassIndex}` : ''}`
     )}`;
 
     const totalFeeText = event.isPaid
@@ -771,6 +798,51 @@ Universal Human Values Cell • TKM College of Engineering, Kollam`;
           </div>
         </div>
 
+        {/* --- Multi-Partner Pass Selector (When Group Ticket) --- */}
+        {isGroup && (
+          <div className="flex flex-wrap items-center justify-center gap-2 pt-2 pb-1 print:hidden">
+            <span className="text-xs font-bold text-slate-500 mr-1 flex items-center gap-1">
+              <Users className="w-3.5 h-3.5 text-emerald-600" /> Select Pass:
+            </span>
+            <button
+              type="button"
+              onClick={() => setActivePassIndex('all')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                activePassIndex === 'all'
+                  ? 'bg-emerald-600 text-white shadow-md'
+                  : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-300'
+              }`}
+            >
+              👥 Full Team Pass ({totalGroup})
+            </button>
+            <button
+              type="button"
+              onClick={() => setActivePassIndex(0)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                activePassIndex === 0
+                  ? 'bg-emerald-600 text-white shadow-md'
+                  : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-300'
+              }`}
+            >
+              1. {successData.fullName} (Lead)
+            </button>
+            {membersList.map((m: string, idx: number) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => setActivePassIndex(idx + 1)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                  activePassIndex === idx + 1
+                    ? 'bg-emerald-600 text-white shadow-md'
+                    : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-300'
+                }`}
+              >
+                {idx + 2}. {m}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* --- CONCERT-STYLE TICKET STUB (Reference Design with Co-Branded Logos) --- */}
         <div className="overflow-x-auto pb-4 pt-2">
           <div
@@ -828,7 +900,7 @@ Universal Human Values Cell • TKM College of Engineering, Kollam`;
                     {/* Entry Pass Type Capsule */}
                     <div className="shrink-0">
                       <span className="text-[10px] font-extrabold uppercase px-3 py-1.5 rounded-lg bg-emerald-950/90 border border-emerald-500/50 text-emerald-300 tracking-wider shadow-sm">
-                        {isGroup ? `Group Pass (${successData.groupSize})` : 'Entry Pass'}
+                        {passBadgeText}
                       </span>
                     </div>
                   </div>
@@ -921,9 +993,9 @@ Universal Human Values Cell • TKM College of Engineering, Kollam`;
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-left">
                   <div>
                     <span className="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">
-                      {isGroup ? 'Team Lead' : 'Attendee'}
+                      {currentAttendeeRole}
                     </span>
-                    <span className="text-xs font-extrabold text-white truncate block">{successData.fullName}</span>
+                    <span className="text-xs font-extrabold text-white truncate block">{currentAttendeeName}</span>
                   </div>
                   <div>
                     <span className="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">Contact</span>
@@ -990,7 +1062,7 @@ Universal Human Values Cell • TKM College of Engineering, Kollam`;
               {/* Stub Header */}
               <div className="text-center w-full">
                 <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400 block">
-                  {isGroup ? `ADMIT ${successData.groupSize || 2}` : 'ADMIT ONE'}
+                  {admitText}
                 </span>
                 <span className="font-mono text-xs font-bold text-slate-300 block tracking-wider mt-0.5">
                   {regCode}

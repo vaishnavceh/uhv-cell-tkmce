@@ -539,79 +539,360 @@ export class EventsService {
     });
   }
 
-  async verifyRegistration(regId: string) {
-    const registration = await this.prisma.eventRegistration.findUnique({
-      where: { id: regId },
-      include: {
-        event: {
-          select: {
-            id: true,
-            title: true,
-            slug: true,
-            eventDate: true,
-            startTime: true,
-            endTime: true,
-            venue: true,
-            category: true,
-            isPaid: true,
-            ticketPrice: true,
-            upiId: true,
-            upiQrCode: true,
-            paymentInstructions: true,
-            status: true,
-            collaborators: true,
-            coordinatorName: true,
-            coordinatorPhone: true,
-          },
-        },
-      },
-    });
-    if (!registration) {
-      throw new NotFoundException(`Registration with ID "${regId}" not found`);
+  // Helper to construct full partner roster and check-in status
+  private buildPartnerRoster(
+    registration: any,
+    targetMemberIndex?: number | null,
+    targetMemberName?: string | null,
+  ) {
+    const totalGroupSize = Math.max(1, Number(registration.groupSize) || 1);
+    const isGroup = registration.ticketType === 'GROUP' || totalGroupSize > 1;
+
+    let custom = registration.customData;
+    if (typeof custom === 'string') {
+      try { custom = JSON.parse(custom); } catch { custom = {}; }
+    } else if (!custom || typeof custom !== 'object') {
+      custom = {};
     }
-    return registration;
+
+    const checkedInMembers: string[] = Array.isArray(custom.checkedInMembers)
+      ? custom.checkedInMembers.map(String)
+      : [];
+    const checkInTimestamps: Record<string, string> =
+      custom.checkInTimestamps && typeof custom.checkInTimestamps === 'object'
+        ? custom.checkInTimestamps
+        : {};
+
+    const roster: Array<{
+      index: number;
+      name: string;
+      isLead: boolean;
+      checkedIn: boolean;
+      checkedInAt?: string;
+      isScannedTarget: boolean;
+    }> = [];
+
+    // Lead attendee is always Member index 0
+    const leadChecked =
+      checkedInMembers.includes('0') ||
+      checkedInMembers.includes(registration.fullName) ||
+      (registration.checkedIn && checkedInMembers.length === 0);
+
+    const leadTimestamp =
+      checkInTimestamps['0'] ||
+      (leadChecked && registration.checkedInAt ? new Date(registration.checkedInAt).toISOString() : undefined);
+
+    roster.push({
+      index: 0,
+      name: registration.fullName,
+      isLead: true,
+      checkedIn: leadChecked,
+      checkedInAt: leadTimestamp,
+      isScannedTarget: targetMemberIndex === 0 || (!targetMemberIndex && targetMemberName === registration.fullName),
+    });
+
+    // Additional members from groupMembers
+    let members = registration.groupMembers;
+    if (typeof members === 'string') {
+      try { members = JSON.parse(members); } catch { members = []; }
+    }
+    if (!Array.isArray(members)) members = [];
+
+    // Add named members
+    members.forEach((m: any, idx: number) => {
+      const memberIndex = idx + 1;
+      const mName = typeof m === 'string' ? m.trim() : (m?.name || m?.fullName || `Member #${memberIndex + 1}`).trim();
+      if (!mName) return;
+
+      const isChecked =
+        checkedInMembers.includes(String(memberIndex)) ||
+        checkedInMembers.includes(mName) ||
+        (registration.checkedIn && checkedInMembers.length === 0);
+
+      const timestamp =
+        checkInTimestamps[String(memberIndex)] ||
+        (isChecked && registration.checkedInAt ? new Date(registration.checkedInAt).toISOString() : undefined);
+
+      const isTarget =
+        targetMemberIndex === memberIndex ||
+        Boolean(targetMemberName && targetMemberName.toLowerCase() === mName.toLowerCase());
+
+      roster.push({
+        index: memberIndex,
+        name: mName,
+        isLead: false,
+        checkedIn: isChecked,
+        checkedInAt: timestamp,
+        isScannedTarget: Boolean(isTarget),
+      });
+    });
+
+    // If totalGroupSize is greater than roster length, fill placeholder members
+    while (roster.length < totalGroupSize) {
+      const nextIndex = roster.length;
+      const isChecked =
+        checkedInMembers.includes(String(nextIndex)) ||
+        (registration.checkedIn && checkedInMembers.length === 0);
+      const timestamp =
+        checkInTimestamps[String(nextIndex)] ||
+        (isChecked && registration.checkedInAt ? new Date(registration.checkedInAt).toISOString() : undefined);
+
+      roster.push({
+        index: nextIndex,
+        name: `Partner #${nextIndex + 1}`,
+        isLead: false,
+        checkedIn: isChecked,
+        checkedInAt: timestamp,
+        isScannedTarget: targetMemberIndex === nextIndex,
+      });
+    }
+
+    const checkedInCount = roster.filter((m) => m.checkedIn).length;
+    const totalMembers = roster.length;
+    const isAllCheckedIn = checkedInCount >= totalMembers;
+
+    // Check if the specifically scanned target is already checked in
+    let targetCheckedIn = false;
+    if (targetMemberIndex !== null && targetMemberIndex !== undefined) {
+      const target = roster.find((m) => m.index === targetMemberIndex);
+      if (target) targetCheckedIn = target.checkedIn;
+    } else {
+      targetCheckedIn = isAllCheckedIn;
+    }
+
+    return {
+      ...registration,
+      isGroup,
+      partnerRoster: roster,
+      targetMemberIndex: targetMemberIndex ?? null,
+      targetMemberName:
+        targetMemberName ??
+        (targetMemberIndex !== null && targetMemberIndex !== undefined
+          ? roster.find((m) => m.index === targetMemberIndex)?.name || null
+          : null),
+      checkedInCount,
+      totalMembers,
+      isAllCheckedIn,
+      alreadyCheckedIn: targetCheckedIn,
+    };
   }
 
-  async checkInRegistration(regId: string) {
+  async verifyRegistration(query: string) {
+    let raw = (query || '').trim();
+    let targetMemberIndex: number | null = null;
+    let targetMemberName: string | null = null;
+
+    if (raw.startsWith('UHVPASS::')) {
+      raw = raw.replace(/^UHVPASS::/, '');
+    }
+
+    if (raw.includes('::')) {
+      const parts = raw.split('::');
+      raw = parts[0].trim();
+      const suffix = parts[1].trim();
+      if (/^\d+$/.test(suffix)) {
+        targetMemberIndex = parseInt(suffix, 10);
+      } else if (suffix) {
+        targetMemberName = suffix;
+      }
+    }
+
+    const eventSelect = {
+      id: true,
+      title: true,
+      slug: true,
+      eventDate: true,
+      startTime: true,
+      endTime: true,
+      venue: true,
+      category: true,
+      isPaid: true,
+      ticketPrice: true,
+      upiId: true,
+      upiQrCode: true,
+      paymentInstructions: true,
+      status: true,
+      collaborators: true,
+      coordinatorName: true,
+      coordinatorPhone: true,
+    };
+
+    let registration: any = null;
+
+    // 1. UUID regex match
+    const embeddedUuidMatch = raw.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+    if (embeddedUuidMatch) {
+      const cleanUuid = embeddedUuidMatch[0];
+      registration = await this.prisma.eventRegistration.findUnique({
+        where: { id: cleanUuid },
+        include: { event: { select: eventSelect } },
+      });
+    }
+
+    // 2. Short ticket code (e.g. "UHV-8E5A1C0B" or "8e5a1c0b")
+    if (!registration) {
+      const cleanCode = raw.toUpperCase().replace(/^UHV-/, '').trim();
+      if (cleanCode.length >= 6) {
+        registration = await this.prisma.eventRegistration.findFirst({
+          where: {
+            id: {
+              startsWith: cleanCode.toLowerCase(),
+            },
+          },
+          include: { event: { select: eventSelect } },
+        });
+      }
+    }
+
+    // 3. Exact phone or email match
+    if (!registration && raw.length >= 3) {
+      registration = await this.prisma.eventRegistration.findFirst({
+        where: {
+          OR: [
+            { email: { equals: raw, mode: 'insensitive' } },
+            { phone: { equals: raw } },
+            { groupName: { equals: raw, mode: 'insensitive' } },
+          ],
+        },
+        include: { event: { select: eventSelect } },
+      });
+    }
+
+    // 4. Loose search by phone contains or groupName/fullName contains
+    if (!registration && raw.length >= 3) {
+      registration = await this.prisma.eventRegistration.findFirst({
+        where: {
+          OR: [
+            { phone: { contains: raw } },
+            { groupName: { contains: raw, mode: 'insensitive' } },
+            { fullName: { contains: raw, mode: 'insensitive' } },
+          ],
+        },
+        include: { event: { select: eventSelect } },
+      });
+    }
+
+    if (!registration) {
+      throw new NotFoundException(`Registration with identifier "${query}" not found`);
+    }
+
+    return this.buildPartnerRoster(registration, targetMemberIndex, targetMemberName);
+  }
+
+  async checkInRegistration(
+    regId: string,
+    body?: { memberIndex?: number; memberName?: string; admitAll?: boolean },
+  ) {
     const reg = await this.prisma.eventRegistration.findUnique({ where: { id: regId } });
     if (!reg) throw new NotFoundException('Registration not found');
-    if (reg.checkedIn) {
-      return this.verifyRegistration(regId).then((r) => ({ ...r, alreadyCheckedIn: true }));
+
+    const totalGroupSize = Math.max(1, Number(reg.groupSize) || 1);
+    const isGroup = reg.ticketType === 'GROUP' || totalGroupSize > 1;
+
+    let custom: any = reg.customData;
+    if (typeof custom === 'string') {
+      try { custom = JSON.parse(custom); } catch { custom = {}; }
+    } else if (!custom || typeof custom !== 'object') {
+      custom = {};
     }
+
+    const checkedInMembers: string[] = Array.isArray(custom.checkedInMembers)
+      ? [...custom.checkedInMembers.map(String)]
+      : [];
+    const checkInTimestamps: Record<string, string> = {
+      ...(custom.checkInTimestamps && typeof custom.checkInTimestamps === 'object'
+        ? custom.checkInTimestamps
+        : {}),
+    };
+
+    const nowIso = new Date().toISOString();
+
+    if (!isGroup || body?.admitAll) {
+      // Admit everyone
+      for (let i = 0; i < totalGroupSize; i++) {
+        const key = String(i);
+        if (!checkedInMembers.includes(key)) {
+          checkedInMembers.push(key);
+        }
+        if (!checkInTimestamps[key]) {
+          checkInTimestamps[key] = nowIso;
+        }
+      }
+    } else if (body?.memberIndex !== undefined) {
+      const key = String(body.memberIndex);
+      if (!checkedInMembers.includes(key)) {
+        checkedInMembers.push(key);
+      }
+      checkInTimestamps[key] = nowIso;
+    } else if (body?.memberName) {
+      const mName = body.memberName.trim();
+      if (!checkedInMembers.includes(mName)) {
+        checkedInMembers.push(mName);
+      }
+      checkInTimestamps[mName] = nowIso;
+    } else {
+      // Default: Admit first unadmitted partner, or Lead (0)
+      let targetIndex = 0;
+      for (let i = 0; i < totalGroupSize; i++) {
+        if (!checkedInMembers.includes(String(i))) {
+          targetIndex = i;
+          break;
+        }
+      }
+      const key = String(targetIndex);
+      if (!checkedInMembers.includes(key)) {
+        checkedInMembers.push(key);
+      }
+      checkInTimestamps[key] = nowIso;
+    }
+
+    const isAllIn = checkedInMembers.length >= totalGroupSize;
+
+    const updatedCustomData = {
+      ...custom,
+      checkedInMembers,
+      checkInTimestamps,
+    };
+
+    const eventSelect = {
+      id: true,
+      title: true,
+      slug: true,
+      eventDate: true,
+      startTime: true,
+      endTime: true,
+      venue: true,
+      category: true,
+      isPaid: true,
+      ticketPrice: true,
+      upiId: true,
+      upiQrCode: true,
+      paymentInstructions: true,
+      status: true,
+      collaborators: true,
+      coordinatorName: true,
+      coordinatorPhone: true,
+    };
+
     const updated = await this.prisma.eventRegistration.update({
       where: { id: regId },
-      data: { checkedIn: true, checkedInAt: new Date() },
+      data: {
+        checkedIn: isAllIn,
+        checkedInAt: reg.checkedInAt || new Date(),
+        customData: updatedCustomData,
+      },
       include: {
-        event: {
-          select: {
-            id: true,
-            title: true,
-            slug: true,
-            eventDate: true,
-            startTime: true,
-            endTime: true,
-            venue: true,
-            category: true,
-            isPaid: true,
-            ticketPrice: true,
-            upiId: true,
-            upiQrCode: true,
-            paymentInstructions: true,
-            status: true,
-            collaborators: true,
-            coordinatorName: true,
-            coordinatorPhone: true,
-          },
-        },
+        event: { select: eventSelect },
       },
     });
-    return { ...updated, alreadyCheckedIn: false };
+
+    return this.buildPartnerRoster(updated, body?.memberIndex, body?.memberName);
   }
 
   async verifyPayment(regId: string, status: string = 'VERIFIED') {
     const reg = await this.prisma.eventRegistration.findUnique({ where: { id: regId } });
     if (!reg) throw new NotFoundException('Registration not found');
-    return this.prisma.eventRegistration.update({
+    const updated = await this.prisma.eventRegistration.update({
       where: { id: regId },
       data: { paymentStatus: status },
       include: {
@@ -638,11 +919,49 @@ export class EventsService {
         },
       },
     });
+    return this.buildPartnerRoster(updated);
   }
 
-  async spotPaymentCheckIn(regId: string, paymentMethod: 'CASH' | 'UPI' = 'CASH', reference?: string) {
+  async spotPaymentCheckIn(
+    regId: string,
+    paymentMethod: 'CASH' | 'UPI' = 'CASH',
+    reference?: string,
+    body?: { memberIndex?: number; admitAll?: boolean },
+  ) {
     const reg = await this.prisma.eventRegistration.findUnique({ where: { id: regId } });
     if (!reg) throw new NotFoundException('Registration not found');
+
+    const totalGroupSize = Math.max(1, Number(reg.groupSize) || 1);
+    let custom: any = reg.customData;
+    if (typeof custom === 'string') {
+      try { custom = JSON.parse(custom); } catch { custom = {}; }
+    } else if (!custom || typeof custom !== 'object') {
+      custom = {};
+    }
+
+    const checkedInMembers: string[] = Array.isArray(custom.checkedInMembers)
+      ? [...custom.checkedInMembers.map(String)]
+      : [];
+    const checkInTimestamps: Record<string, string> = {
+      ...(custom.checkInTimestamps && typeof custom.checkInTimestamps === 'object'
+        ? custom.checkInTimestamps
+        : {}),
+    };
+
+    const nowIso = new Date().toISOString();
+
+    const shouldAdmitAll = body?.admitAll !== false;
+    if (shouldAdmitAll) {
+      for (let i = 0; i < totalGroupSize; i++) {
+        const key = String(i);
+        if (!checkedInMembers.includes(key)) checkedInMembers.push(key);
+        if (!checkInTimestamps[key]) checkInTimestamps[key] = nowIso;
+      }
+    } else if (body?.memberIndex !== undefined) {
+      const key = String(body.memberIndex);
+      if (!checkedInMembers.includes(key)) checkedInMembers.push(key);
+      checkInTimestamps[key] = nowIso;
+    }
 
     let note: string;
     if (paymentMethod === 'UPI') {
@@ -653,38 +972,46 @@ export class EventsService {
       note = reg.paymentReference ? `${reg.paymentReference} (Gate Spot Verified)` : 'SPOT PAYMENT (Collected at Gate)';
     }
 
+    const isAllIn = checkedInMembers.length >= totalGroupSize;
+
+    const eventSelect = {
+      id: true,
+      title: true,
+      slug: true,
+      eventDate: true,
+      startTime: true,
+      endTime: true,
+      venue: true,
+      category: true,
+      isPaid: true,
+      ticketPrice: true,
+      upiId: true,
+      upiQrCode: true,
+      paymentInstructions: true,
+      status: true,
+      collaborators: true,
+      coordinatorName: true,
+      coordinatorPhone: true,
+    };
+
     const updated = await this.prisma.eventRegistration.update({
       where: { id: regId },
       data: {
         paymentStatus: 'VERIFIED',
-        checkedIn: true,
-        checkedInAt: new Date(),
+        checkedIn: isAllIn,
+        checkedInAt: reg.checkedInAt || new Date(),
         paymentReference: note,
-      },
-      include: {
-        event: {
-          select: {
-            id: true,
-            title: true,
-            slug: true,
-            eventDate: true,
-            startTime: true,
-            endTime: true,
-            venue: true,
-            category: true,
-            isPaid: true,
-            ticketPrice: true,
-            upiId: true,
-            upiQrCode: true,
-            paymentInstructions: true,
-            status: true,
-            collaborators: true,
-            coordinatorName: true,
-            coordinatorPhone: true,
-          },
+        customData: {
+          ...custom,
+          checkedInMembers,
+          checkInTimestamps,
         },
       },
+      include: {
+        event: { select: eventSelect },
+      },
     });
-    return { ...updated, alreadyCheckedIn: false };
+
+    return this.buildPartnerRoster(updated, body?.memberIndex);
   }
 }
