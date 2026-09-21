@@ -48,6 +48,7 @@ async function bootstrap() {
   const uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, '..', 'uploads');
   app.useStaticAssets(uploadDir, {
     prefix: '/uploads/',
+    maxAge: '30d', // Cache static assets for 30 days
   });
 
   // Global Prefix

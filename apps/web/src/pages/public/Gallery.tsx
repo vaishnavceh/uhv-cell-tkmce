@@ -160,6 +160,7 @@ export const Gallery: React.FC = () => {
                 src={images[activeLightboxIndex].imageUrl}
                 alt={images[activeLightboxIndex].title}
                 className="max-h-[70vh] max-w-full object-contain rounded-lg shadow-2xl"
+                loading="lazy"
               />
               <div className="mt-4 text-center text-white space-y-1">
                 <h3 className="text-base font-bold">{images[activeLightboxIndex].title}</h3>
