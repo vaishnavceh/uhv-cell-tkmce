@@ -1,0 +1,38 @@
+{
+  "name": "uhv-cell-tkmce",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Universal Human Values (UHV) Cell - TKM College of Engineering Monorepo",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "docker compose up --build",
+    "dev:down": "docker compose down",
+    "prod": "docker compose -f docker-compose.prod.yml up --build -d",
+    "prod:down": "docker compose -f docker-compose.prod.yml down",
+    "test": "docker compose run --rm api npm run test",
+    "prisma:generate": "docker compose run --rm api npx prisma generate",
+    "prisma:migrate": "docker compose run --rm api npx prisma migrate deploy",
+    "prisma:seed": "docker compose run --rm api npx ts-node prisma/seed.ts"
+  },
+  "keywords": [
+    "uhv",
+    "tkmce",
+    "aicte",
+    "human-values",
+    "education"
+  ],
+  "author": "TKM College of Engineering",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^20.12.7",
+    "prisma": "^5.12.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
+  }
+}

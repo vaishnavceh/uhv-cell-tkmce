@@ -1,0 +1,295 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum RoleName {
+  SUPER_ADMIN
+  ADMIN
+  EDITOR
+  CONTENT_MANAGER
+}
+
+enum EventStatus {
+  DRAFT
+  UPCOMING
+  ONGOING
+  COMPLETED
+  CANCELLED
+}
+
+enum AnnouncementStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum ContactStatus {
+  NEW
+  READ
+  RESPONDED
+  ARCHIVED
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  name        RoleName @unique
+  description String
+  permissions Json     @default("[]")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  users       User[]
+
+  @@map("roles")
+}
+
+model User {
+  id           String         @id @default(uuid())
+  email        String         @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  roleId       String
+  role         Role           @relation(fields: [roleId], references: [id])
+  isActive     Boolean        @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  refreshTokens RefreshToken[]
+  auditLogs    AuditLog[]
+
+  @@index([email])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model Objective {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  order       Int      @default(0)
+  published   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([published])
+  @@map("objectives")
+}
+
+model Activity {
+  id          String   @id @default(uuid())
+  title       String
+  slug        String   @unique
+  description String
+  icon        String   @default("BookOpen")
+  category    String   @default("Core")
+  order       Int      @default(0)
+  published   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([slug])
+  @@index([published])
+  @@map("activities")
+}
+
+model Event {
+  id               String      @id @default(uuid())
+  title            String
+  slug             String      @unique
+  description      String
+  shortDescription String?
+  eventDate        DateTime
+  startTime        String?
+  endTime          String?
+  venue            String
+  category         String      @default("UHV Event")
+  coverImage       String?
+  registrationUrl  String?
+  status           EventStatus @default(UPCOMING)
+  featured         Boolean     @default(false)
+  published        Boolean     @default(true)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  @@index([slug])
+  @@index([eventDate])
+  @@index([status])
+  @@index([published])
+  @@map("events")
+}
+
+model Workshop {
+  id                  String   @id @default(uuid())
+  title               String
+  description         String
+  date                DateTime
+  venue               String
+  organizer           String   @default("UHV Cell, TKMCE")
+  category            String   @default("UHV Workshop")
+  facultyParticipants Int      @default(0)
+  studentParticipants Int      @default(0)
+  images              Json     @default("[]")
+  documents           Json     @default("[]")
+  published           Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([date])
+  @@index([published])
+  @@map("workshops")
+}
+
+model TeamMember {
+  id          String   @id @default(uuid())
+  name        String
+  designation String
+  department  String
+  role        String
+  bio         String?
+  photo       String?
+  email       String?
+  phone       String?
+  order       Int      @default(0)
+  published   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([order])
+  @@index([published])
+  @@map("team_members")
+}
+
+model Resource {
+  id            String   @id @default(uuid())
+  title         String
+  description   String
+  category      String
+  fileUrl       String
+  fileName      String
+  fileType      String
+  fileSize      Int
+  thumbnail     String?
+  downloadCount Int      @default(0)
+  published     Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([category])
+  @@index([published])
+  @@map("resources")
+}
+
+model GalleryAlbum {
+  id          String         @id @default(uuid())
+  title       String
+  description String?
+  coverImage  String?
+  published   Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  images      GalleryImage[]
+
+  @@index([published])
+  @@map("gallery_albums")
+}
+
+model GalleryImage {
+  id        String       @id @default(uuid())
+  albumId   String
+  album     GalleryAlbum @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  title     String
+  caption   String?
+  imageUrl  String
+  altText   String?
+  order     Int          @default(0)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@index([albumId])
+  @@index([order])
+  @@map("gallery_images")
+}
+
+model Announcement {
+  id          String             @id @default(uuid())
+  title       String
+  slug        String             @unique
+  content     String
+  excerpt     String?
+  coverImage  String?
+  publishedAt DateTime?
+  status      AnnouncementStatus @default(PUBLISHED)
+  featured    Boolean            @default(false)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@index([slug])
+  @@index([status])
+  @@index([publishedAt])
+  @@map("announcements")
+}
+
+model ContactMessage {
+  id            String        @id @default(uuid())
+  name          String
+  email         String
+  subject       String
+  message       String
+  status        ContactStatus @default(NEW)
+  responseNotes String?
+  respondedAt   DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("contact_messages")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  entity    String
+  entityId  String?
+  metadata  Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([action])
+  @@index([entity])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model SiteSetting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  group     String   @default("general")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([key])
+  @@index([group])
+  @@map("site_settings")
+}

@@ -1,0 +1,19 @@
+User-agent: *
+Allow: /
+Allow: /about
+Allow: /objectives
+Allow: /activities
+Allow: /team
+Allow: /workshops
+Allow: /events
+Allow: /resources
+Allow: /gallery
+Allow: /announcements
+Allow: /contact
+
+# Protect administrative CMS routes from crawlers
+Disallow: /admin
+Disallow: /admin/*
+Disallow: /api/*
+
+Sitemap: http://localhost/sitemap.xml
