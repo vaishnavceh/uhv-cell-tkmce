@@ -12,6 +12,7 @@ import { Modal } from '../../components/ui/Modal';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { Badge } from '../../components/ui/Badge';
 import { Table, Thead, Tbody, Tr, Th, Td } from '../../components/ui/Table';
+import { ImageUpload } from '../../components/ui/ImageUpload';
 
 export const EventsManager: React.FC = () => {
   usePageTitle('Manage Events');
@@ -343,6 +344,15 @@ export const EventsManager: React.FC = () => {
             value={formData.shortDescription}
             onChange={(e) => setFormData({ ...formData, shortDescription: e.target.value })}
             placeholder="Brief 1-sentence teaser for cards"
+          />
+
+          <ImageUpload
+            label="Event Cover / Banner Image (Optional)"
+            value={formData.coverImage}
+            onChange={(url) => setFormData({ ...formData, coverImage: url })}
+            folder="events"
+            aspectRatio="video"
+            helperText="Upload event promotional poster or header image"
           />
 
           <Textarea

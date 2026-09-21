@@ -20,6 +20,7 @@ import { Textarea } from '../../components/ui/Textarea';
 import { Modal } from '../../components/ui/Modal';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { Badge } from '../../components/ui/Badge';
+import { ImageUpload } from '../../components/ui/ImageUpload';
 
 export const GalleryManager: React.FC = () => {
   usePageTitle('Manage Gallery & Media');
@@ -377,11 +378,13 @@ export const GalleryManager: React.FC = () => {
             required
           />
 
-          <Input
-            label="Cover Image URL (Optional)"
+          <ImageUpload
+            label="Album Cover Image (Optional)"
             value={albumForm.coverImage}
-            onChange={(e) => setAlbumForm({ ...albumForm, coverImage: e.target.value })}
-            placeholder="/assets/gallery/... or /uploads/gallery/..."
+            onChange={(url) => setAlbumForm({ ...albumForm, coverImage: url })}
+            folder="gallery"
+            aspectRatio="video"
+            helperText="Upload an album cover photo directly from your device, or enter a URL"
           />
 
           <Textarea
@@ -437,29 +440,20 @@ export const GalleryManager: React.FC = () => {
           }}
           className="space-y-4"
         >
-          {/* Photo File Upload Box */}
-          <div className="p-4 bg-slate-50 rounded-xl border border-dashed border-slate-300 text-center space-y-2">
-            <Upload className="w-6 h-6 text-slate-400 mx-auto" />
-            <div className="text-xs text-slate-600">
-              <label className="text-emerald-700 font-bold hover:underline cursor-pointer">
-                <span>Select image file to upload</span>
-                <input
-                  type="file"
-                  onChange={handlePhotoUpload}
-                  className="sr-only"
-                  accept="image/jpeg,image/png,image/webp"
-                />
-              </label>
-            </div>
-            {uploading && <p className="text-xs text-emerald-700 font-bold animate-pulse">Uploading photo...</p>}
-          </div>
-
-          <Input
-            label="Image URL *"
+          <ImageUpload
+            label="Photo Image File *"
             value={photoForm.imageUrl}
-            onChange={(e) => setPhotoForm({ ...photoForm, imageUrl: e.target.value })}
-            placeholder="/uploads/gallery/... or /assets/..."
+            onChange={(url) => {
+              setPhotoForm((prev) => ({
+                ...prev,
+                imageUrl: url,
+                title: prev.title || 'UHV Event Photograph',
+              }));
+            }}
+            folder="gallery"
+            aspectRatio="video"
             required
+            helperText="Upload image file from your device or paste URL"
           />
 
           <Input

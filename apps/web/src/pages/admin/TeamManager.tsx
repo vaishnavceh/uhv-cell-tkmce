@@ -11,6 +11,7 @@ import { Modal } from '../../components/ui/Modal';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { Badge } from '../../components/ui/Badge';
 import { Table, Thead, Tbody, Tr, Th, Td } from '../../components/ui/Table';
+import { ImageUpload } from '../../components/ui/ImageUpload';
 
 export const TeamManager: React.FC = () => {
   usePageTitle('Manage Team Roster');
@@ -186,13 +187,36 @@ export const TeamManager: React.FC = () => {
                 <Tr key={item.id}>
                   <Td className="text-center font-bold text-slate-600">{item.order}</Td>
                   <Td>
-                    <div className="space-y-0.5">
-                      <p className="text-xs font-bold text-institutional-950">{item.name}</p>
-                      {item.email && (
-                        <p className="text-[11px] text-slate-500 flex items-center gap-1">
-                          <Mail className="w-3 h-3 text-slate-400" /> {item.email}
-                        </p>
-                      )}
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-100 border border-slate-200 shrink-0 flex items-center justify-center">
+                        {item.photo ? (
+                          <img
+                            src={item.photo}
+                            alt={item.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = '/assets/uhv_logo_green.png';
+                            }}
+                          />
+                        ) : (
+                          <span className="text-[9px] font-bold text-slate-400 text-center leading-none">No photo</span>
+                        )}
+                      </div>
+                      <div className="space-y-0.5 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="text-xs font-bold text-institutional-950 truncate">{item.name}</p>
+                          {!item.photo && (
+                            <span className="text-[9px] text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.2 rounded font-medium">
+                              Image not uploaded
+                            </span>
+                          )}
+                        </div>
+                        {item.email && (
+                          <p className="text-[11px] text-slate-500 flex items-center gap-1">
+                            <Mail className="w-3 h-3 text-slate-400" /> {item.email}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </Td>
                   <Td>
@@ -278,6 +302,10 @@ export const TeamManager: React.FC = () => {
                 onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                 className="w-full text-xs rounded-lg border border-slate-300 p-2 focus:ring-2 focus:ring-emerald-600 focus:outline-none"
               >
+                <option value="Student Ambassador">Student Ambassador (ExeCom)</option>
+                <option value="Core Functional Lead">Core Functional Lead (ExeCom)</option>
+                <option value="Program Execution Team">Program Execution Team (ExeCom)</option>
+                <option value="Faculty Mentor">Faculty Mentor</option>
                 <option value="UHV Cell Coordinator">UHV Cell Coordinator</option>
                 <option value="Faculty Member">Faculty Member</option>
                 <option value="UHV-Oriented Faculty">UHV-Oriented Faculty</option>
@@ -285,6 +313,15 @@ export const TeamManager: React.FC = () => {
               </select>
             </div>
           </div>
+
+          <ImageUpload
+            label="Member Photo / Portrait"
+            value={formData.photo}
+            onChange={(url) => setFormData({ ...formData, photo: url })}
+            folder="team"
+            aspectRatio="square"
+            helperText="Upload official member portrait or headshot. Leave blank to display 'Image not uploaded'"
+          />
 
           <div className="grid grid-cols-2 gap-4">
             <Input

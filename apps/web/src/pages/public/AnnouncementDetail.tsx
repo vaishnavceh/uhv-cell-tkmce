@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../../api/client';
 import { Announcement } from '@uhv/shared-types';
 import { usePageTitle } from '../../hooks/usePageTitle';
-import { ArrowLeft, Calendar, FileText, Share2, Bell } from 'lucide-react';
+import { ArrowLeft, Calendar, FileText, Share2, Bell, Download, Users, CheckCircle2 } from 'lucide-react';
 import { formatDate } from '../../utils/cn';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
@@ -87,6 +87,42 @@ export const AnnouncementDetail: React.FC = () => {
           <div className="prose prose-emerald max-w-none text-slate-700 text-sm leading-relaxed whitespace-pre-line space-y-4">
             {data.content}
           </div>
+
+          {/* If announcement relates to ExeCom, render document links and roster card */}
+          {(data.title.toLowerCase().includes('execom') || data.slug.toLowerCase().includes('execom')) && (
+            <div className="mt-8 p-6 rounded-xl bg-emerald-50/80 border border-emerald-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-800">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span>Official Selection Documents Available</span>
+                </div>
+                <h4 className="text-sm font-bold text-institutional-950">
+                  Student Executive Committee (ExeCom 2026–27)
+                </h4>
+                <p className="text-xs text-slate-600">
+                  Explore complete member profiles with portraits or download the official signed selection results.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                <Link
+                  to="/team"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold bg-institutional-850 hover:bg-institutional-900 text-white shadow-sm transition"
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  <span>View ExeCom Team</span>
+                </Link>
+                <a
+                  href="/assets/docs/UHV_ExeCom_Selection_Results_2026-27.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold bg-white hover:bg-emerald-100 text-emerald-900 border border-emerald-300 shadow-sm transition"
+                >
+                  <Download className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>Download Signed PDF</span>
+                </a>
+              </div>
+            </div>
+          )}
 
           {/* Official Signoff Box */}
           <div className="mt-10 pt-6 border-t border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs text-slate-500 bg-slate-50/80 p-4 rounded-xl">

@@ -12,6 +12,7 @@ import { Modal } from '../../components/ui/Modal';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { Badge } from '../../components/ui/Badge';
 import { Table, Thead, Tbody, Tr, Th, Td } from '../../components/ui/Table';
+import { ImageUpload } from '../../components/ui/ImageUpload';
 
 export const AnnouncementsManager: React.FC = () => {
   usePageTitle('Manage Notices & Circulars');
@@ -275,6 +276,15 @@ export const AnnouncementsManager: React.FC = () => {
             value={formData.excerpt}
             onChange={(e) => setFormData({ ...formData, excerpt: e.target.value })}
             placeholder="Teaser summary displayed in list views..."
+          />
+
+          <ImageUpload
+            label="Cover / Banner Image (Optional)"
+            value={formData.coverImage}
+            onChange={(url) => setFormData({ ...formData, coverImage: url })}
+            folder="announcements"
+            aspectRatio="wide"
+            helperText="Upload banner image for the circular (displayed on details & cards)"
           />
 
           <Textarea

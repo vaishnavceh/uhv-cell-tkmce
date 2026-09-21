@@ -29,6 +29,6 @@ prisma/*.db-journal
 prisma/seed.js
 
 # Uploads
-uploads/
+/uploads/
 docker-volumes/
 EXECOM_UHV/

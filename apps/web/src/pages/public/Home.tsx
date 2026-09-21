@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Hero } from '../../sections/Hero';
+import { LatestAnnouncementNotification } from '../../components/common/LatestAnnouncementNotification';
 import { WebSectionsHub } from '../../sections/WebSectionsHub';
 import { AICTEDocuments } from '../../sections/AICTEDocuments';
 import { Philosophy } from '../../sections/Philosophy';
@@ -65,6 +66,9 @@ export const Home: React.FC = () => {
 
   return (
     <div className="bg-institutional-warm">
+      {/* Dynamic Institutional Notice Notification Banner */}
+      <LatestAnnouncementNotification />
+
       {/* 1. Hero Section with Background-Removed Green Logo & Orbit Geometry */}
       <Hero />
 

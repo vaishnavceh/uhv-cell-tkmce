@@ -83,12 +83,17 @@ export class AnnouncementsService {
     return announcement;
   }
 
-  async findOne(id: string) {
-    const announcement = await this.prisma.announcement.findUnique({
-      where: { id },
+  async findOne(idOrSlug: string) {
+    const announcement = await this.prisma.announcement.findFirst({
+      where: {
+        OR: [
+          { id: idOrSlug },
+          { slug: idOrSlug },
+        ],
+      },
     });
     if (!announcement) {
-      throw new NotFoundException(`Announcement with ID ${id} not found`);
+      throw new NotFoundException(`Announcement with identifier "${idOrSlug}" not found`);
     }
     return announcement;
   }
