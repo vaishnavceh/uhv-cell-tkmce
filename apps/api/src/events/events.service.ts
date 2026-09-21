@@ -251,6 +251,7 @@ export class EventsService {
         designation: dto.designation || null,
         uploadReference: dto.uploadReference || null,
         customData: dto.customData || {},
+        status: 'APPROVED',
       },
     });
   }

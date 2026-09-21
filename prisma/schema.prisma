@@ -160,7 +160,7 @@ model EventRegistration {
   designation     String?
   uploadReference String?
   customData      Json               @default("{}")
-  status          RegistrationStatus @default(PENDING)
+  status          RegistrationStatus @default(APPROVED)
   createdAt       DateTime           @default(now())
 
   @@index([eventId])

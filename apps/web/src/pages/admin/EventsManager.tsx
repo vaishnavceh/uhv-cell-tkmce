@@ -696,17 +696,72 @@ const EventRegistrationsViewer: React.FC<{ eventId: string | null; event?: Event
     },
   });
 
+  const handleExportCSV = () => {
+    if (!registrations || registrations.length === 0) {
+      alert('No registrations available to export.');
+      return;
+    }
+
+    const headers = [
+      'Registration ID',
+      'Full Name',
+      'Email',
+      'Phone',
+      'Designation / Role',
+      ...customFields.map((f) => f.label || f.id),
+      'Upload Reference',
+      'Status',
+      'Registered At',
+    ];
+
+    const rows = registrations.map((reg) => [
+      reg.id,
+      `"${(reg.fullName || '').replace(/"/g, '""')}"`,
+      `"${(reg.email || '').replace(/"/g, '""')}"`,
+      `"${(reg.phone || '').replace(/"/g, '""')}"`,
+      `"${(reg.designation || '').replace(/"/g, '""')}"`,
+      ...customFields.map((f) => {
+        const val = reg.customData?.[f.id] || reg.customData?.[f.label] || '';
+        return `"${String(val).replace(/"/g, '""')}"`;
+      }),
+      `"${(reg.uploadReference || '').replace(/"/g, '""')}"`,
+      reg.status || 'APPROVED',
+      reg.createdAt ? new Date(reg.createdAt).toLocaleString() : '',
+    ]);
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    const sanitizedTitle = (event?.title || 'event').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    link.setAttribute('download', `${sanitizedTitle}-registrations-${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   if (!eventId) return null;
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between bg-slate-50 p-4 rounded-lg border border-slate-200">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 p-4 rounded-lg border border-slate-200">
         <div>
           <h3 className="text-sm font-bold text-slate-800">Registered Participants {event?.title ? `— ${event.title}` : ''}</h3>
-          <p className="text-xs text-slate-500">Manage approvals for internal registrations and view custom attendee details.</p>
+          <p className="text-xs text-slate-500">Attendee data with automatic approvals and dynamic field columns.</p>
         </div>
-        <div className="text-xs font-bold text-slate-700 bg-white px-3 py-1.5 rounded-full border border-slate-200 shadow-sm">
-          Total: {registrations?.length || 0}
+        <div className="flex items-center gap-3">
+          <Button
+            type="button"
+            size="sm"
+            onClick={handleExportCSV}
+            disabled={!registrations || registrations.length === 0}
+            className="bg-emerald-700 hover:bg-emerald-800 text-white text-xs flex items-center gap-1.5 shadow-sm"
+          >
+            <Download className="w-4 h-4" /> Export CSV
+          </Button>
+          <div className="text-xs font-bold text-slate-700 bg-white px-3 py-1.5 rounded-full border border-slate-200 shadow-sm">
+            Total: {registrations?.length || 0}
+          </div>
         </div>
       </div>
 
