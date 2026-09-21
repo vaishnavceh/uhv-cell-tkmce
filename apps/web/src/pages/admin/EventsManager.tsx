@@ -35,6 +35,7 @@ export const EventsManager: React.FC = () => {
     venue: '',
     category: 'WORKSHOP',
     coverImage: '',
+    collaborators: '',
     registrationUrl: '',
     enableInternalReg: false,
     registrationUploadLink: '',
