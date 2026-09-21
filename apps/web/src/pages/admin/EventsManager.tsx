@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../api/client';
-import { EventItem, EventStatus } from '@uhv/shared-types';
+import { EventItem, EventStatus, RegistrationFieldDefinition } from '@uhv/shared-types';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { Plus, Edit2, Trash2, Calendar, Search, ExternalLink, Users, Download, CheckCircle, XCircle } from 'lucide-react';
 import { formatDate } from '../../utils/cn';
@@ -42,6 +42,7 @@ export const EventsManager: React.FC = () => {
     registrationEndDate: '',
     registrationCapacity: '',
     isRegistrationClosed: false,
+    registrationFields: [] as RegistrationFieldDefinition[],
     status: EventStatus.UPCOMING,
     featured: false,
     published: true,
@@ -64,6 +65,7 @@ export const EventsManager: React.FC = () => {
         eventDate: new Date(formData.eventDate).toISOString(),
         registrationCapacity: formData.registrationCapacity ? Number(formData.registrationCapacity) : null,
         registrationEndDate: formData.registrationEndDate ? new Date(formData.registrationEndDate).toISOString() : null,
+        registrationFields: formData.registrationFields,
       };
       if (editingItem) {
         await apiClient.patch(`/events/${editingItem.id}`, payload);
@@ -111,10 +113,43 @@ export const EventsManager: React.FC = () => {
       registrationEndDate: '',
       registrationCapacity: '',
       isRegistrationClosed: false,
+      registrationFields: [],
       status: EventStatus.UPCOMING,
       featured: false,
       published: true,
     });
+  };
+
+  const handleAddField = () => {
+    setFormData((prev) => ({
+      ...prev,
+      registrationFields: [
+        ...prev.registrationFields,
+        {
+          id: 'field_' + Date.now(),
+          label: '',
+          type: 'text',
+          required: true,
+          placeholder: '',
+        },
+      ],
+    }));
+  };
+
+  const handleRemoveField = (id: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      registrationFields: prev.registrationFields.filter((f) => f.id !== id),
+    }));
+  };
+
+  const handleUpdateField = (id: string, key: keyof RegistrationFieldDefinition, value: any) => {
+    setFormData((prev) => ({
+      ...prev,
+      registrationFields: prev.registrationFields.map((f) =>
+        f.id === id ? { ...f, [key]: value } : f
+      ),
+    }));
   };
 
   const handleOpenCreate = () => {
@@ -162,6 +197,7 @@ export const EventsManager: React.FC = () => {
       registrationEndDate: safeRegDate,
       registrationCapacity: item.registrationCapacity ? String(item.registrationCapacity) : '',
       isRegistrationClosed: item.isRegistrationClosed || false,
+      registrationFields: (item.registrationFields as RegistrationFieldDefinition[]) || [],
       status: item.status,
       featured: item.featured,
       published: item.published,
@@ -322,10 +358,13 @@ export const EventsManager: React.FC = () => {
       <Modal
         isOpen={!!viewingRegistrationsFor}
         onClose={() => setViewingRegistrationsFor(null)}
-        title="Event Registrations"
+        title="Event Registrations &amp; Attendee Data"
         maxWidth="4xl"
       >
-        <EventRegistrationsViewer eventId={viewingRegistrationsFor} />
+        <EventRegistrationsViewer
+          eventId={viewingRegistrationsFor}
+          event={events.find((e) => e.id === viewingRegistrationsFor)}
+        />
       </Modal>
 
       {/* Create / Edit Modal */}
@@ -509,6 +548,74 @@ export const EventsManager: React.FC = () => {
                   rows={2}
                   placeholder="E.g., Registration fee is ₹500. Please upload the transaction receipt."
                 />
+
+                {/* Dynamic Custom Fields Section */}
+                <div className="border-t border-slate-200 pt-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h5 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Custom Fields &amp; Columns</h5>
+                      <p className="text-[11px] text-slate-500">Add custom fields for this event (e.g. Student Class, Roll No, Branch).</p>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={handleAddField}
+                      className="text-xs text-emerald-800 border-emerald-300 hover:bg-emerald-50"
+                    >
+                      <Plus className="w-3.5 h-3.5 mr-1" /> Add Custom Field
+                    </Button>
+                  </div>
+
+                  {formData.registrationFields.length === 0 ? (
+                    <div className="p-3 bg-slate-100 rounded-lg text-center text-xs text-slate-500 italic">
+                      No custom fields added yet. The form will ask for standard info (Full Name, Email, Phone).
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5">
+                      {formData.registrationFields.map((field, idx) => (
+                        <div key={field.id} className="flex items-center gap-2 p-2.5 bg-white border border-slate-200 rounded-lg shadow-2xs">
+                          <span className="text-xs font-bold text-slate-400 w-5">#{idx + 1}</span>
+                          <input
+                            type="text"
+                            placeholder="Field Label (e.g. Student Class, Roll No)"
+                            value={field.label}
+                            onChange={(e) => handleUpdateField(field.id, 'label', e.target.value)}
+                            className="flex-1 text-xs rounded border border-slate-300 p-2 focus:ring-1 focus:ring-emerald-600 focus:outline-none font-medium"
+                            required
+                          />
+                          <select
+                            value={field.type}
+                            onChange={(e) => handleUpdateField(field.id, 'type', e.target.value as any)}
+                            className="text-xs rounded border border-slate-300 p-2 focus:ring-1 focus:ring-emerald-600 focus:outline-none"
+                          >
+                            <option value="text">Text</option>
+                            <option value="number">Number</option>
+                            <option value="tel">Phone</option>
+                            <option value="email">Email</option>
+                          </select>
+                          <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer select-none px-1">
+                            <input
+                              type="checkbox"
+                              checked={field.required}
+                              onChange={(e) => handleUpdateField(field.id, 'required', e.target.checked)}
+                              className="rounded text-emerald-600 w-3.5 h-3.5"
+                            />
+                            <span>Req</span>
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveField(field.id)}
+                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition"
+                            title="Remove Field"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </>
             )}
           </div>
@@ -567,8 +674,9 @@ export const EventsManager: React.FC = () => {
 
 // --- Registrations Viewer Sub-Component ---
 
-const EventRegistrationsViewer: React.FC<{ eventId: string | null }> = ({ eventId }) => {
+const EventRegistrationsViewer: React.FC<{ eventId: string | null; event?: EventItem }> = ({ eventId, event }) => {
   const queryClient = useQueryClient();
+  const customFields: RegistrationFieldDefinition[] = (event?.registrationFields as RegistrationFieldDefinition[]) || [];
 
   const { data: registrations, isLoading } = useQuery<any[]>({
     queryKey: ['admin-event-registrations', eventId],
@@ -594,8 +702,8 @@ const EventRegistrationsViewer: React.FC<{ eventId: string | null }> = ({ eventI
     <div className="space-y-4">
       <div className="flex items-center justify-between bg-slate-50 p-4 rounded-lg border border-slate-200">
         <div>
-          <h3 className="text-sm font-bold text-slate-800">Registered Participants</h3>
-          <p className="text-xs text-slate-500">Manage approvals for internal registrations.</p>
+          <h3 className="text-sm font-bold text-slate-800">Registered Participants {event?.title ? `— ${event.title}` : ''}</h3>
+          <p className="text-xs text-slate-500">Manage approvals for internal registrations and view custom attendee details.</p>
         </div>
         <div className="text-xs font-bold text-slate-700 bg-white px-3 py-1.5 rounded-full border border-slate-200 shadow-sm">
           Total: {registrations?.length || 0}
@@ -608,7 +716,9 @@ const EventRegistrationsViewer: React.FC<{ eventId: string | null }> = ({ eventI
             <Tr>
               <Th>Participant Name</Th>
               <Th>Contact Details</Th>
-              <Th>Institution</Th>
+              {customFields.map((f) => (
+                <Th key={f.id}>{f.label || 'Custom Field'}</Th>
+              ))}
               <Th>Upload Ref</Th>
               <Th>Status</Th>
               <Th className="text-right">Actions</Th>
@@ -617,26 +727,28 @@ const EventRegistrationsViewer: React.FC<{ eventId: string | null }> = ({ eventI
           <Tbody>
             {isLoading ? (
               <Tr>
-                <Td colSpan={6} className="text-center py-6 text-xs text-slate-500">Loading registrations...</Td>
+                <Td colSpan={5 + customFields.length} className="text-center py-6 text-xs text-slate-500">Loading registrations...</Td>
               </Tr>
             ) : !registrations || registrations.length === 0 ? (
               <Tr>
-                <Td colSpan={6} className="text-center py-6 text-xs text-slate-500">No registrations yet.</Td>
+                <Td colSpan={5 + customFields.length} className="text-center py-6 text-xs text-slate-500">No registrations yet.</Td>
               </Tr>
             ) : (
               registrations.map((reg) => (
                 <Tr key={reg.id}>
                   <Td>
                     <div className="text-xs font-bold text-slate-800">{reg.fullName}</div>
-                    <div className="text-[10px] text-slate-500">{reg.designation}</div>
+                    {reg.designation && <div className="text-[10px] text-slate-500">{reg.designation}</div>}
                   </Td>
                   <Td>
                     <div className="text-xs text-slate-700">{reg.email}</div>
                     <div className="text-xs text-slate-700">{reg.phone}</div>
                   </Td>
-                  <Td className="text-xs text-slate-700 max-w-[150px] truncate" title={reg.institution}>
-                    {reg.institution || '-'}
-                  </Td>
+                  {customFields.map((f) => (
+                    <Td key={f.id} className="text-xs text-slate-800 font-medium">
+                      {reg.customData?.[f.id] || reg.customData?.[f.label] || '-'}
+                    </Td>
+                  ))}
                   <Td className="text-xs font-mono text-slate-600 max-w-[100px] truncate" title={reg.uploadReference}>
                     {reg.uploadReference || '-'}
                   </Td>

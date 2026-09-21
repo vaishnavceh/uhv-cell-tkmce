@@ -134,6 +134,7 @@ model Event {
   registrationEndDate   DateTime?
   registrationCapacity  Int?
   isRegistrationClosed  Boolean             @default(false)
+  registrationFields    Json                @default("[]")
   status                EventStatus         @default(UPCOMING)
   featured              Boolean             @default(false)
   published             Boolean             @default(true)
@@ -158,6 +159,7 @@ model EventRegistration {
   institution     String?
   designation     String?
   uploadReference String?
+  customData      Json               @default("{}")
   status          RegistrationStatus @default(PENDING)
   createdAt       DateTime           @default(now())
 

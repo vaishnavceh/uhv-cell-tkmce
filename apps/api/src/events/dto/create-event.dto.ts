@@ -109,6 +109,10 @@ export class CreateEventDto {
   @IsOptional()
   @IsBoolean()
   isRegistrationClosed?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  registrationFields?: any;
 }
 
 export class UpdateEventDto {
@@ -210,6 +214,10 @@ export class UpdateEventDto {
   @IsOptional()
   @IsBoolean()
   isRegistrationClosed?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  registrationFields?: any;
 }
 
 export class CreateEventRegistrationDto {
@@ -242,6 +250,10 @@ export class CreateEventRegistrationDto {
   @IsOptional()
   @IsString()
   uploadReference?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  customData?: any;
 }
 
 export class UpdateEventRegistrationStatusDto {

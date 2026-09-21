@@ -138,11 +138,20 @@ export interface EventItem {
   registrationEndDate?: string | null;
   registrationCapacity?: number | null;
   isRegistrationClosed: boolean;
+  registrationFields: RegistrationFieldDefinition[];
   status: EventStatus;
   featured: boolean;
   published: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface RegistrationFieldDefinition {
+  id: string;
+  label: string;
+  type: 'text' | 'number' | 'email' | 'tel';
+  required: boolean;
+  placeholder?: string;
 }
 
 export enum RegistrationStatus {
@@ -160,6 +169,7 @@ export interface EventRegistration {
   institution?: string | null;
   designation?: string | null;
   uploadReference?: string | null;
+  customData?: Record<string, any>;
   status: RegistrationStatus;
   createdAt: string;
 }

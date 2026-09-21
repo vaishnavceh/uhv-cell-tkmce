@@ -137,6 +137,7 @@ export class EventsService {
         registrationEndDate: dto.registrationEndDate ? new Date(dto.registrationEndDate) : null,
         registrationCapacity: dto.registrationCapacity ? Number(dto.registrationCapacity) : null,
         isRegistrationClosed: dto.isRegistrationClosed ?? false,
+        registrationFields: dto.registrationFields || [],
         status: dto.status || EventStatus.UPCOMING,
         featured: dto.featured ?? false,
         published: dto.published ?? true,
@@ -168,6 +169,9 @@ export class EventsService {
     }
     if (dto.registrationCapacity !== undefined) {
       data.registrationCapacity = dto.registrationCapacity ? Number(dto.registrationCapacity) : null;
+    }
+    if (dto.registrationFields !== undefined) {
+      data.registrationFields = dto.registrationFields || [];
     }
 
     const updated = await this.prisma.event.update({
@@ -243,9 +247,10 @@ export class EventsService {
         fullName: dto.fullName,
         email: dto.email,
         phone: dto.phone,
-        institution: dto.institution,
-        designation: dto.designation,
-        uploadReference: dto.uploadReference,
+        institution: dto.institution || null,
+        designation: dto.designation || null,
+        uploadReference: dto.uploadReference || null,
+        customData: dto.customData || {},
       },
     });
   }
