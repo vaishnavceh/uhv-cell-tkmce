@@ -105,7 +105,7 @@ export const Dashboard: React.FC = () => {
 
         <div className="flex flex-wrap items-center gap-2">
           <Link to="/admin/events">
-            <Button size="sm" variant="default" className="text-xs bg-institutional-850 hover:bg-institutional-950">
+            <Button size="sm" variant="primary" className="text-xs bg-institutional-850 hover:bg-institutional-950">
               <Plus className="w-3.5 h-3.5 mr-1" /> New Event
             </Button>
           </Link>

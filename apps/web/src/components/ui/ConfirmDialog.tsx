@@ -10,7 +10,9 @@ interface ConfirmDialogProps {
   title?: string;
   message: string;
   confirmLabel?: string;
+  confirmText?: string;
   cancelLabel?: string;
+  variant?: string;
   isLoading?: boolean;
 }
 
@@ -21,9 +23,12 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   title = 'Confirm Institutional Action',
   message,
   confirmLabel = 'Delete',
+  confirmText,
   cancelLabel = 'Cancel',
+  variant = 'danger',
   isLoading = false,
 }) => {
+  const finalConfirmLabel = confirmText || confirmLabel;
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title} maxWidth="md">
       <div className="flex items-start gap-4">
@@ -43,7 +48,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           {cancelLabel}
         </Button>
         <Button variant="danger" onClick={onConfirm} isLoading={isLoading}>
-          {confirmLabel}
+          {finalConfirmLabel}
         </Button>
       </div>
     </Modal>
