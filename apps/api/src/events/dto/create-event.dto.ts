@@ -66,6 +66,30 @@ export class CreateEventDto {
   @IsString()
   collaborators?: string;
 
+  @ApiPropertyOptional({ example: 'https://example.com/logo.png' })
+  @IsOptional()
+  @IsString()
+  collaboratorLogo?: string;
+
+  @ApiPropertyOptional({ default: false })
+  @IsOptional()
+  @IsBoolean()
+  isPaid?: boolean;
+
+  @ApiPropertyOptional({ default: 0 })
+  @IsOptional()
+  ticketPrice?: number;
+
+  @ApiPropertyOptional({ example: 'Dr. Sarah Jenkins' })
+  @IsOptional()
+  @IsString()
+  coordinatorName?: string;
+
+  @ApiPropertyOptional({ example: '+91 9876543210' })
+  @IsOptional()
+  @IsString()
+  coordinatorPhone?: string;
+
   @ApiPropertyOptional({ example: 'https://fdp-si.aicte-india.org/' })
   @IsOptional()
   @IsString()
@@ -181,6 +205,30 @@ export class UpdateEventDto {
   @IsString()
   collaborators?: string;
 
+  @ApiPropertyOptional({ example: 'https://example.com/logo.png' })
+  @IsOptional()
+  @IsString()
+  collaboratorLogo?: string;
+
+  @ApiPropertyOptional({ default: false })
+  @IsOptional()
+  @IsBoolean()
+  isPaid?: boolean;
+
+  @ApiPropertyOptional({ default: 0 })
+  @IsOptional()
+  ticketPrice?: number;
+
+  @ApiPropertyOptional({ example: 'Dr. Sarah Jenkins' })
+  @IsOptional()
+  @IsString()
+  coordinatorName?: string;
+
+  @ApiPropertyOptional({ example: '+91 9876543210' })
+  @IsOptional()
+  @IsString()
+  coordinatorPhone?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
@@ -292,6 +340,15 @@ export class CreateEventRegistrationDto {
   @ApiPropertyOptional()
   @IsOptional()
   customData?: any;
+
+  @ApiPropertyOptional({ default: 'FREE' })
+  @IsOptional()
+  @IsString()
+  paymentStatus?: string;
+
+  @ApiPropertyOptional({ default: 0 })
+  @IsOptional()
+  totalAmount?: number;
 }
 
 export class UpdateEventRegistrationStatusDto {

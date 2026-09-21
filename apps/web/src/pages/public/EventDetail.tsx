@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../../api/client';
 import { EventItem, RegistrationFieldDefinition } from '@uhv/shared-types';
 import { usePageTitle } from '../../hooks/usePageTitle';
-import { Calendar, Clock, MapPin, ArrowLeft, ExternalLink, ShieldCheck, Share2, Hourglass, Download, Building2, Users } from 'lucide-react';
+import { Calendar, Clock, MapPin, ArrowLeft, ExternalLink, ShieldCheck, Share2, Hourglass, Download, Building2, Users, Phone, Mail, Bell } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { formatDate } from '../../utils/cn';
 import { Button } from '../../components/ui/Button';
@@ -73,6 +73,15 @@ export const EventDetail: React.FC = () => {
                 {event.category}
               </span>
               <div className="flex items-center gap-2">
+                {event.isPaid ? (
+                  <span className="text-xs font-black px-2.5 py-1 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-900">
+                    ₹{event.ticketPrice} per attendee
+                  </span>
+                ) : (
+                  <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700">
+                    🎟️ Free Entry
+                  </span>
+                )}
                 {event.registrationNotOpened ? (
                   <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 border border-amber-300 text-amber-900">
                     Registration Opening Soon
@@ -98,19 +107,77 @@ export const EventDetail: React.FC = () => {
               </p>
             )}
 
+            {/* Official Co-branding Banner with Logos */}
             {event.collaborators && (
-              <div className="p-4 rounded-xl bg-gradient-to-r from-blue-50 via-slate-50 to-emerald-50/70 border border-blue-200/80 flex items-center gap-3.5 shadow-2xs">
-                <div className="w-10 h-10 rounded-xl bg-blue-700 text-white flex items-center justify-center shrink-0 shadow-sm">
-                  <Building2 className="w-5 h-5" />
+              <div className="p-4 rounded-xl bg-gradient-to-r from-blue-50 via-slate-50 to-emerald-50/70 border border-blue-200/80 flex items-center justify-between gap-3.5 shadow-2xs">
+                <div className="flex items-center gap-3.5 min-w-0">
+                  {event.collaboratorLogo ? (
+                    <img
+                      src={event.collaboratorLogo}
+                      alt="Collaborator Logo"
+                      className="w-10 h-10 object-contain rounded-lg bg-white p-1 border border-blue-200 shadow-sm shrink-0"
+                      onError={(e) => (e.currentTarget.style.display = 'none')}
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-xl bg-blue-700 text-white flex items-center justify-center shrink-0 shadow-sm">
+                      <Building2 className="w-5 h-5" />
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <span className="text-[10px] uppercase font-extrabold tracking-wider text-blue-700 block">
+                      Official Event Partner &amp; Co-Host
+                    </span>
+                    <span className="text-sm sm:text-base font-black text-slate-900 truncate block">
+                      {event.collaborators}
+                    </span>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <span className="text-[10px] uppercase font-extrabold tracking-wider text-blue-700 block">
-                    Official Event Partner &amp; Co-Host
-                  </span>
-                  <span className="text-sm sm:text-base font-black text-slate-900 truncate block">
-                    {event.collaborators}
-                  </span>
+                <div className="hidden sm:flex items-center gap-2 shrink-0 bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-2xs">
+                  <img src="/assets/uhv_emblem_navy.png" alt="UHV Emblem" className="w-5 h-5 object-contain" />
+                  <span className="text-[10px] font-bold text-slate-700">UHV Cell TKMCE</span>
                 </div>
+              </div>
+            )}
+
+            {/* Coordinator Contact For Enquiries (Fixed card) */}
+            {event.coordinatorName && (
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-blue-700 text-white flex items-center justify-center font-bold shrink-0 shadow-sm">
+                    <Phone className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-extrabold text-blue-700 tracking-wider block">
+                      For Enquiries Contact Coordinator
+                    </span>
+                    <span className="font-bold text-slate-900 text-sm block">
+                      {event.coordinatorName}
+                    </span>
+                    {event.coordinatorPhone && (
+                      <span className="text-xs font-mono text-slate-600">
+                        {event.coordinatorPhone}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {event.coordinatorPhone && (
+                  <div className="flex items-center gap-2 shrink-0">
+                    <a
+                      href={`tel:${event.coordinatorPhone}`}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold shadow-2xs transition"
+                    >
+                      <Phone className="w-3.5 h-3.5" /> Call
+                    </a>
+                    <a
+                      href={`https://wa.me/${event.coordinatorPhone.replace(/[^0-9]/g, '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-2xs transition"
+                    >
+                      WhatsApp
+                    </a>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -269,6 +336,8 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
   const [successData, setSuccessData] = React.useState<any>(null);
   const [isDownloadingPng, setIsDownloadingPng] = React.useState(false);
   const [qrDataUrl, setQrDataUrl] = React.useState<string>('');
+  const [uhvLogoBase64, setUhvLogoBase64] = React.useState<string>('');
+  const [collaboratorLogoBase64, setCollaboratorLogoBase64] = React.useState<string>('');
   const ticketRef = React.useRef<HTMLDivElement>(null);
 
   const handleGroupSizeChange = (newSize: number) => {
@@ -280,6 +349,33 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
       return next.slice(0, additionalCount);
     });
   };
+
+  // Convert logos to base64 for canvas & PNG export compatibility
+  React.useEffect(() => {
+    fetch('/assets/uhv_emblem_white.png')
+      .then((r) => r.blob())
+      .then((b) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          if (typeof reader.result === 'string') setUhvLogoBase64(reader.result);
+        };
+        reader.readAsDataURL(b);
+      })
+      .catch(() => {});
+
+    if (event.collaboratorLogo) {
+      fetch(event.collaboratorLogo)
+        .then((r) => r.blob())
+        .then((b) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            if (typeof reader.result === 'string') setCollaboratorLogoBase64(reader.result);
+          };
+          reader.readAsDataURL(b);
+        })
+        .catch(() => {});
+    }
+  }, [event.collaboratorLogo]);
 
   // Pre-fetch QR Code to Data URL for instant, CORS-free PNG snapshot generation
   React.useEffect(() => {
@@ -329,26 +425,39 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
       }
     }
 
+    const requestedSeats = ticketType === 'GROUP' ? groupSize : 1;
+
     if (event.remainingCapacity !== null && event.remainingCapacity !== undefined) {
-      const requested = ticketType === 'GROUP' ? groupSize : 1;
-      if (requested > event.remainingCapacity) {
-        alert(`Only ${event.remainingCapacity} seat${event.remainingCapacity === 1 ? '' : 's'} remaining. Cannot book ${requested} tickets.`);
+      if (requestedSeats > event.remainingCapacity) {
+        alert(`Only ${event.remainingCapacity} seat${event.remainingCapacity === 1 ? '' : 's'} remaining. Cannot book ${requestedSeats} tickets.`);
         return;
       }
     }
+
+    const calculatedTotal = event.isPaid ? ((Number(event.ticketPrice) || 0) * requestedSeats) : 0;
 
     setIsSubmitting(true);
     try {
       const payload = {
         ...formData,
         ticketType,
-        groupSize: ticketType === 'GROUP' ? groupSize : 1,
+        groupSize: requestedSeats,
         groupName: ticketType === 'GROUP' ? groupName.trim() : undefined,
         groupMembers: ticketType === 'GROUP' ? groupMembers.map((m) => m.trim()) : [],
         customData,
+        totalAmount: calculatedTotal,
+        paymentStatus: event.isPaid ? 'PENDING' : 'FREE',
       };
       const res = await apiClient.post(`/events/${event.id}/register`, payload);
       setSuccessData(res.data);
+
+      // Trigger web browser push notification if enabled
+      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+        new Notification('🎟️ Registration Confirmed!', {
+          body: `Your entry pass for ${event.title} is ready. Ticket #${(res.data.id || '').slice(0, 8).toUpperCase()}`,
+          icon: '/assets/uhv_emblem_navy.png',
+        });
+      }
     } catch (error: any) {
       alert(error.response?.data?.message || 'Failed to submit registration. Please try again.');
     } finally {
@@ -392,6 +501,37 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
     const fallbackQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
       `TKMCE UHV EVENT: ${event.title}\nPASS: ${regCode}\nNAME: ${successData.fullName}`
     )}`;
+
+    const totalFeeText = event.isPaid
+      ? `₹${successData.totalAmount || (event.ticketPrice || 0) * (successData.groupSize || 1)}`
+      : 'FREE PASS';
+
+    const gmailSubject = `🎟️ Entry Pass Confirmation: ${event.title}`;
+    const gmailBody = `UNIVERSAL HUMAN VALUES CELL - TKM COLLEGE OF ENGINEERING
+${event.collaborators ? `In Collaboration With: ${event.collaborators}\n` : ''}
+EVENT REGISTRATION CONFIRMATION
+
+Event: ${event.title}
+Date: ${formatDate(event.eventDate)}
+Time: ${event.startTime || 'TBA'} - ${event.endTime || ''}
+Venue: ${event.venue}
+
+PASS DETAILS:
+Ticket ID: ${regCode}
+Ticket Type: ${isGroup ? `Group Pass (${successData.groupSize || 2} Attendees)` : 'Individual Pass'}
+${isGroup && successData.groupName ? `Team / Group Name: ${successData.groupName}\n` : ''}
+Lead Attendee: ${successData.fullName}
+Email: ${successData.email}
+Phone: ${successData.phone}
+${isGroup && membersList.length > 0 ? `Group Members: ${membersList.join(', ')}\n` : ''}
+Registration Fee: ${totalFeeText}
+
+${event.coordinatorName ? `FOR ENQUIRIES CONTACT COORDINATOR:
+${event.coordinatorName} ${event.coordinatorPhone ? `(${event.coordinatorPhone})` : ''}\n` : ''}
+Please present this confirmation email or your digital ticket pass at the venue entrance.
+Universal Human Values Cell • TKM College of Engineering, Kollam`;
+
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(successData.email)}&su=${encodeURIComponent(gmailSubject)}&body=${encodeURIComponent(gmailBody)}`;
 
     return (
       <div className="mt-6 space-y-6">
@@ -447,6 +587,14 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
             >
               🖨️ Print Pass / Save PDF
             </Button>
+            <a
+              href={gmailUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-md bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-sm transition"
+            >
+              <Mail className="w-4 h-4" /> 📧 Open Confirmation in Gmail
+            </a>
             <Button
               variant="outline"
               onClick={() => {
@@ -472,7 +620,7 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
           </div>
         </div>
 
-        {/* --- CONCERT-STYLE TICKET STUB (Reference Design) --- */}
+        {/* --- CONCERT-STYLE TICKET STUB (Reference Design with Co-Branded Logos) --- */}
         <div className="overflow-x-auto pb-4 pt-2">
           <div
             id="uhv-event-ticket"
@@ -481,34 +629,50 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
           >
             {/* Main Left Ticket Section */}
             <div className="flex-1 p-6 sm:p-8 flex flex-col justify-between relative overflow-hidden bg-gradient-to-br from-[#0c1322] via-[#090d16] to-[#05070c]">
-              {/* Background Texture / Abstract Vinyl Graphic */}
+              {/* Background Texture Graphic */}
               <div className="absolute -left-12 -bottom-12 w-48 h-48 rounded-full border border-slate-700/20 pointer-events-none" />
               <div className="absolute -left-6 -bottom-6 w-36 h-36 rounded-full border border-slate-700/20 pointer-events-none" />
               <div className="absolute -left-0 -bottom-0 w-24 h-24 rounded-full border border-slate-700/20 pointer-events-none" />
 
               <div>
-                {/* Header Badge */}
-                <div className="flex items-center justify-between gap-2 mb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center text-[10px] font-black text-black shrink-0">
-                      UHV
+                {/* Co-Branded Header: UHV Cell Logo + Collaborator Logo */}
+                <div className="flex items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-800/80">
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={uhvLogoBase64 || '/assets/uhv_emblem_white.png'}
+                      alt="UHV Cell Logo"
+                      className="w-8 h-8 object-contain shrink-0"
+                    />
+                    <div>
+                      <span className="text-[11px] uppercase font-black tracking-widest text-emerald-400 block">
+                        UNIVERSAL HUMAN VALUES CELL
+                      </span>
+                      <span className="text-[9px] uppercase font-bold text-slate-300 block">
+                        TKM College of Engineering • AICTE Cell
+                      </span>
                     </div>
-                    <span className="text-[10px] uppercase font-extrabold tracking-widest text-emerald-400">
-                      TKM College of Engineering • AICTE Cell
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    {event.collaborators && (
+                      <div className="flex items-center gap-2 bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-700">
+                        {event.collaboratorLogo ? (
+                          <img
+                            src={collaboratorLogoBase64 || event.collaboratorLogo}
+                            alt="Collaborator Logo"
+                            className="h-6 max-w-[80px] object-contain rounded"
+                          />
+                        ) : null}
+                        <span className="text-[9px] font-bold text-slate-300 truncate max-w-[130px]">
+                          🤝 {event.collaborators}
+                        </span>
+                      </div>
+                    )}
+                    <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded bg-emerald-950/80 border border-emerald-500/30 text-emerald-300">
+                      {isGroup ? `Group Pass (${successData.groupSize})` : 'Entry Pass'}
                     </span>
                   </div>
-                  <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded bg-emerald-950/80 border border-emerald-500/30 text-emerald-300 shrink-0">
-                    {isGroup ? `Official Group Pass (${successData.groupSize} Attendees)` : 'Official Entry Pass'}
-                  </span>
                 </div>
-
-                {/* Event Collaborators Banner on Ticket */}
-                {event.collaborators && (
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-800/90 border border-slate-700/80 text-[10px] font-semibold text-slate-200 mb-3 w-max">
-                    <span className="text-emerald-400 font-bold uppercase tracking-wider">In Collaboration With:</span>
-                    <span className="text-white font-extrabold">{event.collaborators}</span>
-                  </div>
-                )}
 
                 {/* Event Title in Bold Concert Headline */}
                 <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black uppercase tracking-tight text-white leading-none mb-4 drop-shadow-sm">
@@ -528,6 +692,9 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-800/90 border border-slate-700 text-xs font-semibold text-slate-200 truncate max-w-[240px]">
                     <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                     {event.venue}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/80 border border-emerald-500/30 text-xs font-bold text-emerald-300">
+                    Fee: {totalFeeText}
                   </span>
                 </div>
               </div>
@@ -553,8 +720,9 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
                   )}
                   {/* Dynamically render custom field answers on ticket */}
                   {customFields.map((f) => {
-                    const val = customData[f.id] || customData[f.label];
-                    if (!val) return null;
+                    const raw = customData[f.id] ?? customData[f.label];
+                    if (raw === undefined || raw === null || raw === '') return null;
+                    const val = typeof raw === 'boolean' ? (raw ? 'Yes' : 'No') : String(raw);
                     return (
                       <div key={f.id}>
                         <span className="text-[9px] uppercase font-bold text-emerald-400 block tracking-wider">{f.label}</span>
@@ -593,7 +761,7 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
             </div>
 
             {/* Right Stub Section */}
-            <div className="w-56 p-6 bg-[#0f172a] flex flex-col items-center justify-between gap-4 border-l border-slate-800 text-center relative shrink-0">
+            <div className="w-56 p-6 bg-[#0f172a] flex flex-col items-center justify-between gap-3 border-l border-slate-800 text-center relative shrink-0">
               {/* Stub Header */}
               <div className="text-center w-full">
                 <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400 block">
@@ -602,14 +770,12 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
                 <span className="font-mono text-xs font-bold text-slate-300 block tracking-wider mt-0.5">
                   {regCode}
                 </span>
-                {isGroup && (
-                  <span className="text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-emerald-950/90 text-emerald-300 border border-emerald-500/30 inline-block mt-0.5">
-                    Group Pass ({successData.groupSize || 2} Pax)
-                  </span>
-                )}
-                {event.collaborators && (
-                  <span className="text-[8px] font-bold text-slate-400 block uppercase truncate max-w-[150px] mx-auto mt-0.5">
-                    {event.collaborators}
+                <div className="my-1.5 py-1 px-2 rounded bg-slate-900 border border-slate-800 text-[10px] font-bold text-emerald-300">
+                  {totalFeeText}
+                </div>
+                {event.coordinatorName && (
+                  <span className="text-[8px] font-medium text-slate-400 block truncate max-w-[150px] mx-auto mt-0.5">
+                    Enquiries: {event.coordinatorName} {event.coordinatorPhone ? `(${event.coordinatorPhone})` : ''}
                   </span>
                 )}
               </div>
@@ -626,8 +792,7 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
 
               {/* Barcode Graphic */}
               <div className="w-full space-y-1">
-                {/* Simulated Barcode Lines */}
-                <div className="h-9 w-full flex items-center justify-center gap-[2.5px] bg-white p-1 rounded">
+                <div className="h-8 w-full flex items-center justify-center gap-[2.5px] bg-white p-1 rounded">
                   {[3, 1, 2, 4, 1, 3, 2, 1, 4, 2, 1, 3, 2, 4, 1, 2, 3, 1, 4, 2, 1, 3, 2, 1, 4, 2].map((w, i) => (
                     <div key={i} className="h-full bg-black" style={{ width: `${w * 1.5}px` }} />
                   ))}
@@ -643,10 +808,23 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
     );
   }
 
+  const requestedAttendees = ticketType === 'GROUP' ? groupSize : 1;
+  const currentTotalFee = event.isPaid ? (Number(event.ticketPrice) || 0) * requestedAttendees : 0;
+
   return (
     <div className="mt-4 p-6 bg-slate-50 rounded-xl border border-slate-200 print:hidden">
-      <h3 className="text-lg font-bold text-slate-800 mb-1">Register for this Event</h3>
-      <p className="text-xs text-slate-500 mb-4">Complete the form below to receive your official entry ticket.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+        <div>
+          <h3 className="text-lg font-bold text-slate-800">Register for this Event</h3>
+          <p className="text-xs text-slate-500">Complete the form below to receive your official verified entry ticket.</p>
+        </div>
+        <div className="text-right">
+          <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Fee Schedule</span>
+          <span className="text-sm font-black text-emerald-800">
+            {event.isPaid ? `₹${event.ticketPrice} / Attendee` : 'Free Admission'}
+          </span>
+        </div>
+      </div>
       
       {event.registrationNotes && (
         <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-900">
@@ -829,7 +1007,7 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
             />
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 sm:col-span-2">
             <label className="text-xs font-bold text-slate-700">
               {ticketType === 'GROUP' ? 'Team Lead Phone Number *' : 'Phone Number *'}
             </label>
@@ -842,29 +1020,94 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
             />
           </div>
 
-          {/* DYNAMIC CUSTOM FIELDS CONFIGURED BY ADMIN (e.g. Student Class, Roll No, Branch) */}
-          {customFields.map((field) => (
-            <div key={field.id} className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700">
-                {field.label} {field.required ? '*' : ''}
-              </label>
-              <input
-                type={field.type || 'text'}
-                required={field.required}
-                placeholder={field.placeholder || `Enter ${field.label}`}
-                className="w-full text-sm rounded-lg border border-slate-300 p-2.5 focus:ring-2 focus:ring-emerald-600 focus:outline-none"
-                value={customData[field.id] || ''}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setCustomData((prev) => ({
-                    ...prev,
-                    [field.id]: val,
-                    [field.label]: val,
-                  }));
-                }}
-              />
-            </div>
-          ))}
+          {/* DYNAMIC CUSTOM FIELDS CONFIGURED BY ADMIN (Checkbox, Select, Text, Number) */}
+          {customFields.map((field) => {
+            if (field.type === 'checkbox') {
+              return (
+                <div key={field.id} className="sm:col-span-2">
+                  <label className="flex items-center gap-3 p-3.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 cursor-pointer shadow-2xs transition">
+                    <input
+                      type="checkbox"
+                      required={field.required}
+                      checked={!!customData[field.id]}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setCustomData((prev) => ({
+                          ...prev,
+                          [field.id]: checked,
+                          [field.label]: checked,
+                        }));
+                      }}
+                      className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+                    />
+                    <div>
+                      <span className="text-xs font-bold text-slate-800 block">
+                        {field.label} {field.required ? '*' : ''}
+                      </span>
+                      <span className="text-[11px] text-slate-500 block">
+                        Check to indicate Yes (e.g. food / accommodation needed)
+                      </span>
+                    </div>
+                  </label>
+                </div>
+              );
+            }
+
+            if (field.type === 'select') {
+              const options = Array.isArray(field.options)
+                ? field.options
+                : (field.options ? String(field.options).split(',') : []);
+              return (
+                <div key={field.id} className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700">
+                    {field.label} {field.required ? '*' : ''}
+                  </label>
+                  <select
+                    required={field.required}
+                    value={customData[field.id] || ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setCustomData((prev) => ({
+                        ...prev,
+                        [field.id]: val,
+                        [field.label]: val,
+                      }));
+                    }}
+                    className="w-full text-sm rounded-lg border border-slate-300 p-2.5 bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                  >
+                    <option value="">Select an option...</option>
+                    {options.map((opt) => {
+                      const trimmed = opt.trim();
+                      return <option key={trimmed} value={trimmed}>{trimmed}</option>;
+                    })}
+                  </select>
+                </div>
+              );
+            }
+
+            return (
+              <div key={field.id} className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700">
+                  {field.label} {field.required ? '*' : ''}
+                </label>
+                <input
+                  type={field.type || 'text'}
+                  required={field.required}
+                  placeholder={field.placeholder || `Enter ${field.label}`}
+                  className="w-full text-sm rounded-lg border border-slate-300 p-2.5 focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                  value={customData[field.id] || ''}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setCustomData((prev) => ({
+                      ...prev,
+                      [field.id]: val,
+                      [field.label]: val,
+                    }));
+                  }}
+                />
+              </div>
+            );
+          })}
 
           {event.registrationUploadLink && (
             <div className="space-y-1.5 sm:col-span-2">
@@ -879,6 +1122,27 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
               />
             </div>
           )}
+
+          {/* Dynamic Registration Fee Calculation Banner */}
+          <div className="p-4 rounded-xl bg-emerald-50/90 border border-emerald-200 flex items-center justify-between gap-3 sm:col-span-2">
+            <div>
+              <span className="text-[10px] uppercase font-bold text-emerald-800 tracking-wider block">
+                Total Payment Due
+              </span>
+              <span className="text-xs text-slate-600">
+                {event.isPaid
+                  ? ticketType === 'GROUP'
+                    ? `₹${event.ticketPrice} × ${groupSize} Attendees`
+                    : `₹${event.ticketPrice} for 1 Attendee`
+                  : 'Free Event — No registration fee required.'}
+              </span>
+            </div>
+            <div className="text-right">
+              <span className="text-lg font-black text-emerald-950">
+                {event.isPaid ? `₹${currentTotalFee}` : 'FREE'}
+              </span>
+            </div>
+          </div>
         </div>
         
         <div className="pt-2">

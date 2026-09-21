@@ -132,6 +132,11 @@ export interface EventItem {
   category: string;
   coverImage?: string | null;
   collaborators?: string | null;
+  collaboratorLogo?: string | null;
+  isPaid?: boolean;
+  ticketPrice?: number;
+  coordinatorName?: string | null;
+  coordinatorPhone?: string | null;
   registrationUrl?: string | null;
   enableInternalReg: boolean;
   registrationUploadLink?: string | null;
@@ -153,9 +158,10 @@ export interface EventItem {
 export interface RegistrationFieldDefinition {
   id: string;
   label: string;
-  type: 'text' | 'number' | 'email' | 'tel';
+  type: 'text' | 'number' | 'email' | 'tel' | 'checkbox' | 'select';
   required: boolean;
   placeholder?: string;
+  options?: string[];
 }
 
 export enum RegistrationStatus {
@@ -178,6 +184,8 @@ export interface EventRegistration {
   groupName?: string | null;
   groupMembers?: string[] | any;
   customData?: Record<string, any>;
+  paymentStatus?: 'FREE' | 'PENDING' | 'PAID' | string;
+  totalAmount?: number;
   status: RegistrationStatus;
   createdAt: string;
 }

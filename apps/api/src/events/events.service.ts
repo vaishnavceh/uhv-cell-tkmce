@@ -192,6 +192,11 @@ export class EventsService {
         category: dto.category || 'UHV Event',
         coverImage: dto.coverImage || null,
         collaborators: dto.collaborators || null,
+        collaboratorLogo: dto.collaboratorLogo || null,
+        isPaid: dto.isPaid ?? false,
+        ticketPrice: dto.ticketPrice ? Number(dto.ticketPrice) : 0,
+        coordinatorName: dto.coordinatorName || null,
+        coordinatorPhone: dto.coordinatorPhone || null,
         registrationUrl: dto.registrationUrl || null,
         enableInternalReg: dto.enableInternalReg ?? false,
         registrationUploadLink: dto.registrationUploadLink || null,
@@ -241,6 +246,21 @@ export class EventsService {
     }
     if (dto.collaborators !== undefined) {
       data.collaborators = dto.collaborators || null;
+    }
+    if (dto.collaboratorLogo !== undefined) {
+      data.collaboratorLogo = dto.collaboratorLogo || null;
+    }
+    if (dto.isPaid !== undefined) {
+      data.isPaid = dto.isPaid;
+    }
+    if (dto.ticketPrice !== undefined) {
+      data.ticketPrice = dto.ticketPrice ? Number(dto.ticketPrice) : 0;
+    }
+    if (dto.coordinatorName !== undefined) {
+      data.coordinatorName = dto.coordinatorName || null;
+    }
+    if (dto.coordinatorPhone !== undefined) {
+      data.coordinatorPhone = dto.coordinatorPhone || null;
     }
 
     const updated = await this.prisma.event.update({
@@ -322,7 +342,10 @@ export class EventsService {
       }
     }
 
-    return this.prisma.eventRegistration.create({
+    const totalAmount = event.isPaid ? ((Number(event.ticketPrice) || 0) * requestedSeats) : 0;
+    const paymentStatus = event.isPaid ? (dto.paymentStatus || 'PENDING') : 'FREE';
+
+    const registration = await this.prisma.eventRegistration.create({
       data: {
         eventId,
         fullName: dto.fullName,
@@ -336,9 +359,82 @@ export class EventsService {
         groupName: dto.groupName || null,
         groupMembers: dto.groupMembers || [],
         customData: dto.customData || {},
+        paymentStatus,
+        totalAmount,
         status: 'APPROVED',
       },
     });
+
+    // Send confirmation email asynchronously without blocking registration response
+    this.sendConfirmationEmail(registration, event).catch((err) => {
+      console.warn('[EmailService] Confirmation email notice:', err?.message || err);
+    });
+
+    return registration;
+  }
+
+  private async sendConfirmationEmail(registration: any, event: any) {
+    const smtpUser = process.env.SMTP_USER || process.env.GMAIL_USER;
+    const smtpPass = process.env.SMTP_PASS || process.env.GMAIL_PASS;
+    const smtpHost = process.env.SMTP_HOST || (smtpUser ? 'smtp.gmail.com' : null);
+    const smtpPort = Number(process.env.SMTP_PORT) || 465;
+
+    const emailHtml = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background: #ffffff;">
+        <div style="background: #022c22; color: #ffffff; padding: 24px; text-align: center;">
+          <h1 style="margin: 0 0 6px 0; font-size: 20px; font-weight: 800; letter-spacing: 1px;">UNIVERSAL HUMAN VALUES CELL</h1>
+          <p style="margin: 0; font-size: 13px; color: #a7f3d0;">TKM College of Engineering, Kollam</p>
+          ${event.collaborators ? `<p style="margin: 8px 0 0 0; font-size: 11px; color: #93c5fd;">In Collaboration With: <strong>${event.collaborators}</strong></p>` : ''}
+        </div>
+        <div style="padding: 24px;">
+          <h2 style="margin: 0 0 8px 0; color: #0f172a; font-size: 18px;">Registration Confirmed!</h2>
+          <p style="color: #475569; font-size: 14px; margin-top: 0;">Dear <strong>${registration.fullName}</strong>,</p>
+          <p style="color: #475569; font-size: 14px;">Your registration for <strong>${event.title}</strong> has been successfully recorded. Here are your official pass details:</p>
+          
+          <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 16px; margin: 16px 0;">
+            <p style="margin: 4px 0; font-size: 13px;"><strong>Ticket Ref ID:</strong> <span style="font-family: monospace; font-weight: bold; color: #059669;">${registration.id}</span></p>
+            <p style="margin: 4px 0; font-size: 13px;"><strong>Ticket Type:</strong> ${registration.ticketType || 'INDIVIDUAL'} (${registration.groupSize || 1} Attendee${(registration.groupSize || 1) > 1 ? 's' : ''})</p>
+            ${registration.groupName ? `<p style="margin: 4px 0; font-size: 13px;"><strong>Team / Group Name:</strong> ${registration.groupName}</p>` : ''}
+            ${Array.isArray(registration.groupMembers) && registration.groupMembers.length > 0 ? `<p style="margin: 4px 0; font-size: 13px;"><strong>Group Members:</strong> ${registration.groupMembers.join(', ')}</p>` : ''}
+            <p style="margin: 4px 0; font-size: 13px;"><strong>Event Date:</strong> ${new Date(event.eventDate).toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            <p style="margin: 4px 0; font-size: 13px;"><strong>Time:</strong> ${event.startTime || 'TBA'} ${event.endTime ? `– ${event.endTime}` : ''}</p>
+            <p style="margin: 4px 0; font-size: 13px;"><strong>Venue:</strong> ${event.venue}</p>
+            <p style="margin: 4px 0; font-size: 13px;"><strong>Payment / Fee:</strong> ${registration.totalAmount > 0 ? `₹${registration.totalAmount} (${registration.paymentStatus})` : 'FREE ENTRY'}</p>
+            ${event.coordinatorName ? `<p style="margin: 4px 0; font-size: 13px;"><strong>For Enquiries:</strong> Coordinator ${event.coordinatorName} ${event.coordinatorPhone ? `(${event.coordinatorPhone})` : ''}</p>` : ''}
+          </div>
+
+          <p style="color: #475569; font-size: 13px;">Please present your digital pass or ticket QR code upon arrival at the venue.</p>
+        </div>
+        <div style="background: #f1f5f9; padding: 16px; text-align: center; font-size: 11px; color: #64748b;">
+          &copy; ${new Date().getFullYear()} Universal Human Values (UHV) Cell &bull; TKM College of Engineering
+        </div>
+      </div>
+    `;
+
+    if (smtpHost && smtpUser && smtpPass) {
+      try {
+        const nodemailer = require('nodemailer');
+        const transporter = nodemailer.createTransport({
+          host: smtpHost,
+          port: smtpPort,
+          secure: smtpPort === 465,
+          auth: { user: smtpUser, pass: smtpPass },
+        });
+
+        await transporter.sendMail({
+          from: `"UHV Cell TKMCE" <${smtpUser}>`,
+          to: registration.email,
+          subject: `🎟️ Entry Pass Confirmation: ${event.title}`,
+          html: emailHtml,
+        });
+        console.log(`[EmailService] Sent confirmation email to ${registration.email}`);
+        return;
+      } catch (err: any) {
+        console.warn(`[EmailService] Nodemailer dispatch failed: ${err.message}`);
+      }
+    }
+
+    console.log(`[EmailService] Confirmation email prepared for ${registration.email} regarding "${event.title}". (Configure SMTP_USER/SMTP_PASS in environment variables to send live emails)`);
   }
 
   async getRegistrations(eventId: string) {

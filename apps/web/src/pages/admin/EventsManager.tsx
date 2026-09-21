@@ -36,6 +36,11 @@ export const EventsManager: React.FC = () => {
     category: 'WORKSHOP',
     coverImage: '',
     collaborators: '',
+    collaboratorLogo: '',
+    isPaid: false,
+    ticketPrice: '',
+    coordinatorName: '',
+    coordinatorPhone: '',
     registrationUrl: '',
     enableInternalReg: false,
     registrationUploadLink: '',
@@ -65,6 +70,11 @@ export const EventsManager: React.FC = () => {
       const payload: any = {
         ...formData,
         collaborators: formData.collaborators || null,
+        collaboratorLogo: formData.collaboratorLogo || null,
+        isPaid: formData.isPaid,
+        ticketPrice: formData.ticketPrice ? Number(formData.ticketPrice) : 0,
+        coordinatorName: formData.coordinatorName || null,
+        coordinatorPhone: formData.coordinatorPhone || null,
         eventDate: new Date(formData.eventDate).toISOString(),
         registrationCapacity: formData.registrationCapacity ? Number(formData.registrationCapacity) : null,
         registrationEndDate: formData.registrationEndDate ? new Date(formData.registrationEndDate).toISOString() : null,
@@ -111,6 +121,11 @@ export const EventsManager: React.FC = () => {
       category: 'WORKSHOP',
       coverImage: '',
       collaborators: '',
+      collaboratorLogo: '',
+      isPaid: false,
+      ticketPrice: '',
+      coordinatorName: '',
+      coordinatorPhone: '',
       registrationUrl: '',
       enableInternalReg: false,
       registrationUploadLink: '',
@@ -135,8 +150,9 @@ export const EventsManager: React.FC = () => {
           id: 'field_' + Date.now(),
           label: '',
           type: 'text',
-          required: true,
+          required: false,
           placeholder: '',
+          options: [],
         },
       ],
     }));
@@ -197,6 +213,11 @@ export const EventsManager: React.FC = () => {
       category: item.category,
       coverImage: item.coverImage || '',
       collaborators: item.collaborators || '',
+      collaboratorLogo: item.collaboratorLogo || '',
+      isPaid: item.isPaid || false,
+      ticketPrice: item.ticketPrice ? String(item.ticketPrice) : '',
+      coordinatorName: item.coordinatorName || '',
+      coordinatorPhone: item.coordinatorPhone || '',
       registrationUrl: item.registrationUrl || '',
       enableInternalReg: item.enableInternalReg || false,
       registrationUploadLink: item.registrationUploadLink || '',
@@ -380,305 +401,407 @@ export const EventsManager: React.FC = () => {
         />
       </Modal>
 
-      {/* Create / Edit Modal */}
+      {/* Create / Edit Modal - 16:9 Widescreen */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title={editingItem ? 'Edit Scheduled Event' : 'Schedule New Event'}
+        maxWidth="16:9"
       >
         <form
           onSubmit={(e) => {
             e.preventDefault();
             saveMutation.mutate();
           }}
-          className="space-y-4"
+          className="space-y-6"
         >
-          <Input
-            label="Event Title *"
-            value={formData.title}
-            onChange={(e) => {
-              const val = e.target.value;
-              setFormData({
-                ...formData,
-                title: val,
-                slug: editingItem ? formData.slug : val.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
-              });
-            }}
-            placeholder="e.g. AICTE 5-Day Online UHV Refresher FDP"
-            required
-          />
-
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="URL Slug *"
-              value={formData.slug}
-              onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-              required
-            />
-            <Input
-              label="Category"
-              value={formData.category}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-              placeholder="FDP / WORKSHOP / SEMINAR"
-              required
-            />
-          </div>
-
-          <div className="grid grid-cols-3 gap-3">
-            <Input
-              label="Event Date *"
-              type="date"
-              value={formData.eventDate}
-              onChange={(e) => setFormData({ ...formData, eventDate: e.target.value })}
-              required
-            />
-            <Input
-              label="Start Time"
-              type="time"
-              value={formData.startTime}
-              onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-            />
-            <Input
-              label="End Time"
-              type="time"
-              value={formData.endTime}
-              onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-            />
-          </div>
-
-          <Input
-            label="Venue / Platform *"
-            value={formData.venue}
-            onChange={(e) => setFormData({ ...formData, venue: e.target.value })}
-            placeholder="e.g. TKMCE Central Auditorium / Google Meet"
-            required
-          />
-
-          <Input
-            label="Collaborators / Co-hosts (Optional)"
-            value={formData.collaborators}
-            onChange={(e) => setFormData({ ...formData, collaborators: e.target.value })}
-            placeholder="e.g. Government of Kerala, AICTE, IEEE"
-            helperText="Organizations or departments collaborating on this event (rendered on event page & official ticket pass)"
-          />
-
-          <Input
-            label="Short Summary"
-            value={formData.shortDescription}
-            onChange={(e) => setFormData({ ...formData, shortDescription: e.target.value })}
-            placeholder="Brief 1-sentence teaser for cards"
-          />
-
-          <ImageUpload
-            label="Event Cover / Banner Image (Optional)"
-            value={formData.coverImage}
-            onChange={(url) => setFormData({ ...formData, coverImage: url })}
-            folder="events"
-            aspectRatio="video"
-            helperText="Upload event promotional poster or header image"
-          />
-
-          <Textarea
-            label="Comprehensive Description *"
-            value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            rows={4}
-            placeholder="Full schedule details, speaker profiles, expected prerequisites..."
-            required
-          />
-
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="Registration Link (Optional)"
-              value={formData.registrationUrl}
-              onChange={(e) => setFormData({ ...formData, registrationUrl: e.target.value })}
-              placeholder="https://forms.gle/..."
-            />
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Status</label>
-              <select
-                value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value as EventStatus })}
-                className="w-full text-xs rounded-lg border border-slate-300 p-2 focus:ring-2 focus:ring-emerald-600 focus:outline-none"
-              >
-                <option value={EventStatus.UPCOMING}>UPCOMING</option>
-                <option value={EventStatus.ONGOING}>ONGOING</option>
-                <option value={EventStatus.COMPLETED}>COMPLETED</option>
-                <option value={EventStatus.CANCELLED}>CANCELLED</option>
-                <option value={EventStatus.DRAFT}>DRAFT</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Registration Link Not Created / Not Opened Yet Toggle */}
-          <div className="p-3.5 bg-amber-50/90 border border-amber-200 rounded-lg">
-            <label className="flex items-start gap-2.5 cursor-pointer text-xs font-semibold text-amber-950">
-              <input
-                type="checkbox"
-                checked={formData.registrationNotOpened}
-                onChange={(e) => setFormData({ ...formData, registrationNotOpened: e.target.checked })}
-                className="rounded text-amber-600 focus:ring-amber-500 w-4 h-4 mt-0.5"
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 xl:gap-8">
+            {/* LEFT COLUMN: Event Essentials & Inquiries */}
+            <div className="space-y-4">
+              <Input
+                label="Event Title *"
+                value={formData.title}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setFormData({
+                    ...formData,
+                    title: val,
+                    slug: editingItem ? formData.slug : val.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
+                  });
+                }}
+                placeholder="e.g. AICTE 5-Day Online UHV Refresher FDP"
+                required
               />
-              <div>
-                <span className="font-bold text-amber-900 block">Registration link not created / Registration not opened yet</span>
-                <span className="text-[11px] text-amber-700 font-normal block mt-0.5">
-                  When checked, attendees will see a dedicated "Registration Has Not Been Opened Yet" page and notice for both internal forms and external links. When unchecked, it directly opens the registration link or internal form.
-                </span>
-              </div>
-            </label>
-          </div>
 
-          {/* REGISTRATION SETTINGS BLOCK */}
-          <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 space-y-4">
-            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Internal Registration Settings</h4>
-            
-            <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700">
-              <input
-                type="checkbox"
-                checked={formData.enableInternalReg}
-                onChange={(e) => setFormData({ ...formData, enableInternalReg: e.target.checked })}
-                className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4"
-              />
-              <span>Enable Internal Registration Form</span>
-            </label>
-
-            {formData.enableInternalReg && (
-              <>
-                <div className="grid grid-cols-2 gap-4">
-                  <Input
-                    label="Registration Deadline (Optional)"
-                    type="datetime-local"
-                    value={formData.registrationEndDate}
-                    onChange={(e) => setFormData({ ...formData, registrationEndDate: e.target.value })}
-                  />
-                  <Input
-                    label="Max Capacity (Optional)"
-                    type="number"
-                    min="1"
-                    value={formData.registrationCapacity}
-                    onChange={(e) => setFormData({ ...formData, registrationCapacity: e.target.value })}
-                    placeholder="e.g. 50"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Registration Status</label>
-                  <select
-                    value={formData.isRegistrationClosed ? 'CLOSED' : 'OPEN'}
-                    onChange={(e) => setFormData({ ...formData, isRegistrationClosed: e.target.value === 'CLOSED' })}
-                    className="w-full text-xs rounded-lg border border-slate-300 p-2.5 focus:ring-2 focus:ring-emerald-600 focus:outline-none"
-                  >
-                    <option value="OPEN">🟢 Open for Registration (Accepts attendees until deadline)</option>
-                    <option value="CLOSED">🔴 Closed Manually (Stops registrations immediately)</option>
-                  </select>
-                </div>
-
+              <div className="grid grid-cols-2 gap-4">
                 <Input
-                  label="External Upload Link (e.g. Google Drive Folder)"
-                  value={formData.registrationUploadLink}
-                  onChange={(e) => setFormData({ ...formData, registrationUploadLink: e.target.value })}
-                  placeholder="https://drive.google.com/drive/folders/..."
-                  helperText="If provided, users will be asked to upload their documents here before submitting."
+                  label="URL Slug *"
+                  value={formData.slug}
+                  onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                  required
                 />
-                <Textarea
-                  label="Registration Instructions (Optional)"
-                  value={formData.registrationNotes}
-                  onChange={(e) => setFormData({ ...formData, registrationNotes: e.target.value })}
-                  rows={2}
-                  placeholder="E.g., Registration fee is ₹500. Please upload the transaction receipt."
+                <Input
+                  label="Category"
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  placeholder="FDP / WORKSHOP / SEMINAR"
+                  required
                 />
+              </div>
 
-                {/* Dynamic Custom Fields Section */}
-                <div className="border-t border-slate-200 pt-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h5 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Custom Fields &amp; Columns</h5>
-                      <p className="text-[11px] text-slate-500">Add custom fields for this event (e.g. Student Class, Roll No, Branch).</p>
-                    </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={handleAddField}
-                      className="text-xs text-emerald-800 border-emerald-300 hover:bg-emerald-50"
-                    >
-                      <Plus className="w-3.5 h-3.5 mr-1" /> Add Custom Field
-                    </Button>
+              <div className="grid grid-cols-3 gap-3">
+                <Input
+                  label="Event Date *"
+                  type="date"
+                  value={formData.eventDate}
+                  onChange={(e) => setFormData({ ...formData, eventDate: e.target.value })}
+                  required
+                />
+                <Input
+                  label="Start Time"
+                  type="time"
+                  value={formData.startTime}
+                  onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                />
+                <Input
+                  label="End Time"
+                  type="time"
+                  value={formData.endTime}
+                  onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+                />
+              </div>
+
+              <Input
+                label="Venue / Platform *"
+                value={formData.venue}
+                onChange={(e) => setFormData({ ...formData, venue: e.target.value })}
+                placeholder="e.g. TKMCE Central Auditorium / Google Meet"
+                required
+              />
+
+              {/* Collaborators & Logo Section */}
+              <div className="p-3.5 bg-blue-50/70 border border-blue-200 rounded-xl space-y-3">
+                <h5 className="text-xs font-bold text-blue-950 uppercase tracking-wider">Official Collaborator / Co-Host (Optional)</h5>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Input
+                    label="Collaborator Organization Name"
+                    value={formData.collaborators}
+                    onChange={(e) => setFormData({ ...formData, collaborators: e.target.value })}
+                    placeholder="e.g. Government of Kerala, AICTE, IEEE"
+                  />
+                  <Input
+                    label="Collaborator Logo URL"
+                    value={formData.collaboratorLogo}
+                    onChange={(e) => setFormData({ ...formData, collaboratorLogo: e.target.value })}
+                    placeholder="https://... or /assets/logo.png"
+                  />
+                </div>
+                {formData.collaboratorLogo && (
+                  <div className="flex items-center gap-3 pt-1">
+                    <span className="text-[11px] text-slate-500 font-medium">Logo Preview:</span>
+                    <img
+                      src={formData.collaboratorLogo}
+                      alt="Collaborator Preview"
+                      className="h-8 max-w-[120px] object-contain rounded bg-white p-1 border border-slate-200 shadow-2xs"
+                      onError={(e) => (e.currentTarget.style.display = 'none')}
+                    />
                   </div>
+                )}
+              </div>
 
-                  {formData.registrationFields.length === 0 ? (
-                    <div className="p-3 bg-slate-100 rounded-lg text-center text-xs text-slate-500 italic">
-                      No custom fields added yet. The form will ask for standard info (Full Name, Email, Phone).
-                    </div>
-                  ) : (
-                    <div className="space-y-2.5">
-                      {formData.registrationFields.map((field, idx) => (
-                        <div key={field.id} className="flex items-center gap-2 p-2.5 bg-white border border-slate-200 rounded-lg shadow-2xs">
-                          <span className="text-xs font-bold text-slate-400 w-5">#{idx + 1}</span>
-                          <input
-                            type="text"
-                            placeholder="Field Label (e.g. Student Class, Roll No)"
-                            value={field.label}
-                            onChange={(e) => handleUpdateField(field.id, 'label', e.target.value)}
-                            className="flex-1 text-xs rounded border border-slate-300 p-2 focus:ring-1 focus:ring-emerald-600 focus:outline-none font-medium"
-                            required
-                          />
-                          <select
-                            value={field.type}
-                            onChange={(e) => handleUpdateField(field.id, 'type', e.target.value as any)}
-                            className="text-xs rounded border border-slate-300 p-2 focus:ring-1 focus:ring-emerald-600 focus:outline-none"
-                          >
-                            <option value="text">Text</option>
-                            <option value="number">Number</option>
-                            <option value="tel">Phone</option>
-                            <option value="email">Email</option>
-                          </select>
-                          <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer select-none px-1">
-                            <input
-                              type="checkbox"
-                              checked={field.required}
-                              onChange={(e) => handleUpdateField(field.id, 'required', e.target.checked)}
-                              className="rounded text-emerald-600 w-3.5 h-3.5"
-                            />
-                            <span>Req</span>
-                          </label>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveField(field.id)}
-                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition"
-                            title="Remove Field"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
+              {/* Coordinator Contact For Enquiries (Fixed 2 columns) */}
+              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+                <h5 className="text-xs font-bold text-slate-800 uppercase tracking-wider">For Enquiries Contact Coordinator</h5>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Input
+                    label="Coordinator Full Name"
+                    value={formData.coordinatorName}
+                    onChange={(e) => setFormData({ ...formData, coordinatorName: e.target.value })}
+                    placeholder="e.g. Dr. Sarah Jenkins / Arjun V."
+                  />
+                  <Input
+                    label="Coordinator Phone / WhatsApp"
+                    value={formData.coordinatorPhone}
+                    onChange={(e) => setFormData({ ...formData, coordinatorPhone: e.target.value })}
+                    placeholder="e.g. +91 98765 43210"
+                  />
+                </div>
+              </div>
+
+              {/* Event Pricing & Fee Section */}
+              <div className="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-3">
+                <h5 className="text-xs font-bold text-emerald-950 uppercase tracking-wider">Event Pricing &amp; Registration Fee</h5>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Admission Type</label>
+                    <select
+                      value={formData.isPaid ? 'PAID' : 'FREE'}
+                      onChange={(e) => setFormData({ ...formData, isPaid: e.target.value === 'PAID' })}
+                      className="w-full text-xs rounded-lg border border-slate-300 p-2.5 focus:ring-2 focus:ring-emerald-600 focus:outline-none bg-white font-medium"
+                    >
+                      <option value="FREE">🎟️ Free Entry (₹0)</option>
+                      <option value="PAID">💳 Paid Ticket / Registration Fee</option>
+                    </select>
+                  </div>
+                  {formData.isPaid && (
+                    <Input
+                      label="Fee per Attendee / Ticket (₹) *"
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={formData.ticketPrice}
+                      onChange={(e) => setFormData({ ...formData, ticketPrice: e.target.value })}
+                      placeholder="e.g. 250"
+                      helperText="Scales automatically with number of attendees for group passes."
+                      required
+                    />
                   )}
                 </div>
-              </>
-            )}
-          </div>
+              </div>
 
-          <div className="flex items-center gap-6 pt-2">
-            <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700">
-              <input
-                type="checkbox"
-                checked={formData.published}
-                onChange={(e) => setFormData({ ...formData, published: e.target.checked })}
-                className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4"
+              <Input
+                label="Short Summary"
+                value={formData.shortDescription}
+                onChange={(e) => setFormData({ ...formData, shortDescription: e.target.value })}
+                placeholder="Brief 1-sentence teaser for cards"
               />
-              <span>Published Live</span>
-            </label>
 
-            <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700">
-              <input
-                type="checkbox"
-                checked={formData.featured}
-                onChange={(e) => setFormData({ ...formData, featured: e.target.checked })}
-                className="rounded text-amber-500 focus:ring-amber-500 w-4 h-4"
+              <Textarea
+                label="Comprehensive Description *"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                rows={3}
+                placeholder="Full schedule details, speaker profiles, expected prerequisites..."
+                required
               />
-              <span>Pin as Featured</span>
-            </label>
+            </div>
+
+            {/* RIGHT COLUMN: Cover Image, Registration & Custom Fields */}
+            <div className="space-y-4">
+              <ImageUpload
+                label="Event Cover / Banner Image (Optional)"
+                value={formData.coverImage}
+                onChange={(url) => setFormData({ ...formData, coverImage: url })}
+                folder="events"
+                aspectRatio="video"
+                helperText="Upload event promotional poster or header image"
+              />
+
+              <div className="grid grid-cols-2 gap-4">
+                <Input
+                  label="External Registration Link (Optional)"
+                  value={formData.registrationUrl}
+                  onChange={(e) => setFormData({ ...formData, registrationUrl: e.target.value })}
+                  placeholder="https://forms.gle/..."
+                />
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Status</label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value as EventStatus })}
+                    className="w-full text-xs rounded-lg border border-slate-300 p-2.5 focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                  >
+                    <option value={EventStatus.UPCOMING}>UPCOMING</option>
+                    <option value={EventStatus.ONGOING}>ONGOING</option>
+                    <option value={EventStatus.COMPLETED}>COMPLETED</option>
+                    <option value={EventStatus.CANCELLED}>CANCELLED</option>
+                    <option value={EventStatus.DRAFT}>DRAFT</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Registration Link Not Opened Yet Toggle */}
+              <div className="p-3 bg-amber-50/90 border border-amber-200 rounded-xl">
+                <label className="flex items-start gap-2.5 cursor-pointer text-xs font-semibold text-amber-950">
+                  <input
+                    type="checkbox"
+                    checked={formData.registrationNotOpened}
+                    onChange={(e) => setFormData({ ...formData, registrationNotOpened: e.target.checked })}
+                    className="rounded text-amber-600 focus:ring-amber-500 w-4 h-4 mt-0.5"
+                  />
+                  <div>
+                    <span className="font-bold text-amber-900 block">Registration link not created / Not opened yet</span>
+                    <span className="text-[11px] text-amber-700 font-normal block mt-0.5">
+                      Displays a dedicated "Registration Has Not Been Opened Yet" page and notification to users.
+                    </span>
+                  </div>
+                </label>
+              </div>
+
+              {/* INTERNAL REGISTRATION SETTINGS BLOCK */}
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Internal Registration Settings</h4>
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-emerald-800">
+                    <input
+                      type="checkbox"
+                      checked={formData.enableInternalReg}
+                      onChange={(e) => setFormData({ ...formData, enableInternalReg: e.target.checked })}
+                      className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4"
+                    />
+                    <span>Enable Internal Form</span>
+                  </label>
+                </div>
+
+                {formData.enableInternalReg && (
+                  <>
+                    <div className="grid grid-cols-2 gap-4">
+                      <Input
+                        label="Registration Deadline (Optional)"
+                        type="datetime-local"
+                        value={formData.registrationEndDate}
+                        onChange={(e) => setFormData({ ...formData, registrationEndDate: e.target.value })}
+                      />
+                      <Input
+                        label="Max Capacity (Optional)"
+                        type="number"
+                        min="1"
+                        value={formData.registrationCapacity}
+                        onChange={(e) => setFormData({ ...formData, registrationCapacity: e.target.value })}
+                        placeholder="e.g. 50"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Registration Status</label>
+                      <select
+                        value={formData.isRegistrationClosed ? 'CLOSED' : 'OPEN'}
+                        onChange={(e) => setFormData({ ...formData, isRegistrationClosed: e.target.value === 'CLOSED' })}
+                        className="w-full text-xs rounded-lg border border-slate-300 p-2.5 focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                      >
+                        <option value="OPEN">🟢 Open for Registration (Accepts attendees until deadline)</option>
+                        <option value="CLOSED">🔴 Closed Manually (Stops registrations immediately)</option>
+                      </select>
+                    </div>
+
+                    <Input
+                      label="External Upload Link (e.g. Google Drive Folder)"
+                      value={formData.registrationUploadLink}
+                      onChange={(e) => setFormData({ ...formData, registrationUploadLink: e.target.value })}
+                      placeholder="https://drive.google.com/drive/folders/..."
+                      helperText="If provided, users will be asked to upload their documents here before submitting."
+                    />
+                    <Textarea
+                      label="Registration Instructions (Optional)"
+                      value={formData.registrationNotes}
+                      onChange={(e) => setFormData({ ...formData, registrationNotes: e.target.value })}
+                      rows={2}
+                      placeholder="E.g., Please carry student ID card to the venue."
+                    />
+
+                    {/* Dynamic Custom Fields Section */}
+                    <div className="border-t border-slate-200 pt-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h5 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Custom Fields &amp; Columns</h5>
+                          <p className="text-[11px] text-slate-500">Add Checkbox (Food needed?), Dropdowns, or Text inputs.</p>
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={handleAddField}
+                          className="text-xs text-emerald-800 border-emerald-300 hover:bg-emerald-50"
+                        >
+                          <Plus className="w-3.5 h-3.5 mr-1" /> Add Field
+                        </Button>
+                      </div>
+
+                      {formData.registrationFields.length === 0 ? (
+                        <div className="p-3 bg-white rounded-lg border border-dashed border-slate-300 text-center text-xs text-slate-500 italic">
+                          No custom fields added yet. The form will ask for standard attendee &amp; group information.
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {formData.registrationFields.map((field, idx) => (
+                            <div key={field.id} className="p-3 bg-white border border-slate-200 rounded-xl shadow-2xs space-y-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-slate-400 w-5">#{idx + 1}</span>
+                                <input
+                                  type="text"
+                                  placeholder="Field Label (e.g. Food / Lunch Required?, Department)"
+                                  value={field.label}
+                                  onChange={(e) => handleUpdateField(field.id, 'label', e.target.value)}
+                                  className="flex-1 text-xs rounded-lg border border-slate-300 p-2 focus:ring-1 focus:ring-emerald-600 focus:outline-none font-medium"
+                                  required
+                                />
+                                <select
+                                  value={field.type}
+                                  onChange={(e) => handleUpdateField(field.id, 'type', e.target.value as any)}
+                                  className="text-xs rounded-lg border border-slate-300 p-2 focus:ring-1 focus:ring-emerald-600 focus:outline-none"
+                                >
+                                  <option value="text">Text Input</option>
+                                  <option value="checkbox">Checkbox (Yes/No, e.g. Food needed?)</option>
+                                  <option value="select">Dropdown / Select</option>
+                                  <option value="number">Number</option>
+                                  <option value="tel">Phone</option>
+                                  <option value="email">Email</option>
+                                </select>
+                                <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer select-none px-1">
+                                  <input
+                                    type="checkbox"
+                                    checked={field.required}
+                                    onChange={(e) => handleUpdateField(field.id, 'required', e.target.checked)}
+                                    className="rounded text-emerald-600 w-3.5 h-3.5"
+                                  />
+                                  <span>Req</span>
+                                </label>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveField(field.id)}
+                                  className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition"
+                                  title="Remove Field"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+
+                              {/* If Select type, allow entering options */}
+                              {field.type === 'select' && (
+                                <div className="pl-7">
+                                  <input
+                                    type="text"
+                                    placeholder="Enter comma-separated options (e.g. Vegetarian, Non-Vegetarian, Jain)"
+                                    value={Array.isArray(field.options) ? field.options.join(', ') : (field.options || '')}
+                                    onChange={(e) => {
+                                      const opts = e.target.value.split(',').map((s) => s.trim()).filter(Boolean);
+                                      handleUpdateField(field.id, 'options', opts);
+                                    }}
+                                    className="w-full text-[11px] rounded border border-slate-300 p-1.5 bg-slate-50 focus:bg-white focus:outline-none"
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="flex items-center gap-6 pt-2">
+                <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={formData.published}
+                    onChange={(e) => setFormData({ ...formData, published: e.target.checked })}
+                    className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4"
+                  />
+                  <span>Published Live</span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={formData.featured}
+                    onChange={(e) => setFormData({ ...formData, featured: e.target.checked })}
+                    className="rounded text-amber-500 focus:ring-amber-500 w-4 h-4"
+                  />
+                  <span>Pin as Featured</span>
+                </label>
+              </div>
+            </div>
           </div>
 
           <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
@@ -743,6 +866,7 @@ const EventRegistrationsViewer: React.FC<{ eventId: string | null; event?: Event
 
     const headers = [
       'Registration ID',
+      'Ticket Number / Ref',
       'Ticket Type',
       'Group Size',
       'Team / Group Name',
@@ -751,40 +875,60 @@ const EventRegistrationsViewer: React.FC<{ eventId: string | null; event?: Event
       'Phone',
       'Group Members',
       'Designation / Role',
+      'Institution',
+      'Admission Type',
+      'Ticket Fee (₹)',
+      'Total Amount (₹)',
       ...customFields.map((f) => f.label || f.id),
       'Upload Reference',
       'Status',
       'Registered At',
     ];
 
+    const escapeCSV = (val: any) => {
+      if (val === null || val === undefined) return '""';
+      if (typeof val === 'boolean') return val ? '"Yes"' : '"No"';
+      return `"${String(val).replace(/"/g, '""')}"`;
+    };
+
     const rows = registrations.map((reg) => [
-      reg.id,
-      reg.ticketType || (reg.groupSize > 1 ? 'GROUP' : 'INDIVIDUAL'),
-      reg.groupSize || 1,
-      `"${(reg.groupName || '').replace(/"/g, '""')}"`,
-      `"${(reg.fullName || '').replace(/"/g, '""')}"`,
-      `"${(reg.email || '').replace(/"/g, '""')}"`,
-      `"${(reg.phone || '').replace(/"/g, '""')}"`,
-      `"${(Array.isArray(reg.groupMembers) ? reg.groupMembers.join('; ') : '').replace(/"/g, '""')}"`,
-      `"${(reg.designation || '').replace(/"/g, '""')}"`,
+      escapeCSV(reg.id),
+      escapeCSV(reg.id ? reg.id.slice(0, 8).toUpperCase() : ''),
+      escapeCSV(reg.ticketType || (reg.groupSize > 1 ? 'GROUP' : 'INDIVIDUAL')),
+      escapeCSV(reg.groupSize || 1),
+      escapeCSV(reg.groupName || ''),
+      escapeCSV(reg.fullName || ''),
+      escapeCSV(reg.email || ''),
+      escapeCSV(reg.phone || ''),
+      escapeCSV(Array.isArray(reg.groupMembers) ? reg.groupMembers.join('; ') : ''),
+      escapeCSV(reg.designation || ''),
+      escapeCSV(reg.institution || ''),
+      escapeCSV(event?.isPaid ? 'PAID' : 'FREE'),
+      escapeCSV(event?.isPaid ? (event.ticketPrice || 0) : 0),
+      escapeCSV(reg.totalAmount !== undefined ? reg.totalAmount : (event?.isPaid ? (event.ticketPrice || 0) * (reg.groupSize || 1) : 0)),
       ...customFields.map((f) => {
-        const val = reg.customData?.[f.id] || reg.customData?.[f.label] || '';
-        return `"${String(val).replace(/"/g, '""')}"`;
+        const raw = reg.customData?.[f.id] ?? reg.customData?.[f.label];
+        if (f.type === 'checkbox' || typeof raw === 'boolean') {
+          return raw ? '"Yes"' : '"No"';
+        }
+        return escapeCSV(raw ?? '');
       }),
-      `"${(reg.uploadReference || '').replace(/"/g, '""')}"`,
-      reg.status || 'APPROVED',
-      reg.createdAt ? new Date(reg.createdAt).toLocaleString() : '',
+      escapeCSV(reg.uploadReference || ''),
+      escapeCSV(reg.status || 'APPROVED'),
+      escapeCSV(reg.createdAt ? new Date(reg.createdAt).toLocaleString() : ''),
     ]);
 
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
+    const csvString = [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+    const blob = new Blob(['\uFEFF' + csvString], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
+    link.href = url;
     const sanitizedTitle = (event?.title || 'event').toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    link.setAttribute('download', `${sanitizedTitle}-registrations-${new Date().toISOString().split('T')[0]}.csv`);
+    link.download = `${sanitizedTitle}-registrations-${new Date().toISOString().split('T')[0]}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   if (!eventId) return null;
@@ -794,7 +938,7 @@ const EventRegistrationsViewer: React.FC<{ eventId: string | null; event?: Event
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 p-4 rounded-lg border border-slate-200">
         <div>
           <h3 className="text-sm font-bold text-slate-800">Registered Participants {event?.title ? `— ${event.title}` : ''}</h3>
-          <p className="text-xs text-slate-500">Attendee data with automatic approvals, group passes, and dynamic fields.</p>
+          <p className="text-xs text-slate-500">Attendee data with automatic approvals, group passes, fees, and dynamic fields.</p>
         </div>
         <div className="flex items-center gap-3">
           <Button
@@ -818,6 +962,7 @@ const EventRegistrationsViewer: React.FC<{ eventId: string | null; event?: Event
             <Tr>
               <Th>Participant / Group</Th>
               <Th>Contact Details</Th>
+              <Th>Admission &amp; Fee</Th>
               {customFields.map((f) => (
                 <Th key={f.id}>{f.label || 'Custom Field'}</Th>
               ))}
@@ -829,11 +974,11 @@ const EventRegistrationsViewer: React.FC<{ eventId: string | null; event?: Event
           <Tbody>
             {isLoading ? (
               <Tr>
-                <Td colSpan={5 + customFields.length} className="text-center py-6 text-xs text-slate-500">Loading registrations...</Td>
+                <Td colSpan={6 + customFields.length} className="text-center py-6 text-xs text-slate-500">Loading registrations...</Td>
               </Tr>
             ) : !registrations || registrations.length === 0 ? (
               <Tr>
-                <Td colSpan={5 + customFields.length} className="text-center py-6 text-xs text-slate-500">No registrations yet.</Td>
+                <Td colSpan={6 + customFields.length} className="text-center py-6 text-xs text-slate-500">No registrations yet.</Td>
               </Tr>
             ) : (
               registrations.map((reg) => (
@@ -862,11 +1007,43 @@ const EventRegistrationsViewer: React.FC<{ eventId: string | null; event?: Event
                     <div className="text-xs text-slate-700">{reg.email}</div>
                     <div className="text-xs text-slate-700">{reg.phone}</div>
                   </Td>
-                  {customFields.map((f) => (
-                    <Td key={f.id} className="text-xs text-slate-800 font-medium">
-                      {reg.customData?.[f.id] || reg.customData?.[f.label] || '-'}
-                    </Td>
-                  ))}
+                  <Td>
+                    {event?.isPaid ? (
+                      <div>
+                        <span className="text-xs font-black text-emerald-800">
+                          ₹{reg.totalAmount !== undefined ? reg.totalAmount : (event.ticketPrice || 0) * (reg.groupSize || 1)}
+                        </span>
+                        <span className="block text-[9px] uppercase font-bold text-slate-500">
+                          {reg.paymentStatus || 'PENDING'}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                        🎟️ FREE
+                      </span>
+                    )}
+                  </Td>
+                  {customFields.map((f) => {
+                    const rawVal = reg.customData?.[f.id] ?? reg.customData?.[f.label];
+                    const isBool = f.type === 'checkbox' || typeof rawVal === 'boolean';
+                    return (
+                      <Td key={f.id} className="text-xs text-slate-800 font-medium">
+                        {isBool ? (
+                          rawVal ? (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                              ✅ Yes
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium text-slate-500 bg-slate-100">
+                              No
+                            </span>
+                          )
+                        ) : (
+                          rawVal || '-'
+                        )}
+                      </Td>
+                    );
+                  })}
                   <Td className="text-xs font-mono text-slate-600 max-w-[100px] truncate" title={reg.uploadReference}>
                     {reg.uploadReference || '-'}
                   </Td>

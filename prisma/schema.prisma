@@ -128,6 +128,11 @@ model Event {
   category              String              @default("UHV Event")
   coverImage            String?
   collaborators         String?
+  collaboratorLogo      String?
+  isPaid                Boolean             @default(false)
+  ticketPrice           Float               @default(0)
+  coordinatorName       String?
+  coordinatorPhone      String?
   registrationUrl       String?
   enableInternalReg     Boolean             @default(false)
   registrationUploadLink String?
@@ -166,6 +171,8 @@ model EventRegistration {
   groupName       String?
   groupMembers    Json               @default("[]")
   customData      Json               @default("{}")
+  paymentStatus   String             @default("FREE")
+  totalAmount     Float              @default(0)
   status          RegistrationStatus @default(APPROVED)
   createdAt       DateTime           @default(now())
 
