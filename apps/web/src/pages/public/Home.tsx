@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Hero } from '../../sections/Hero';
 import { LatestAnnouncementNotification } from '../../components/common/LatestAnnouncementNotification';
+import { LiveEventSyncNotification } from '../../components/common/LiveEventSyncNotification';
 import { WebSectionsHub } from '../../sections/WebSectionsHub';
 import { AICTEDocuments } from '../../sections/AICTEDocuments';
 import { Philosophy } from '../../sections/Philosophy';
@@ -20,6 +21,8 @@ import {
   BookOpen,
   CheckCircle2,
   ExternalLink,
+  Users,
+  Lock,
 } from 'lucide-react';
 import { formatDate, formatFileSize } from '../../utils/cn';
 import { usePageTitle } from '../../hooks/usePageTitle';
@@ -28,14 +31,16 @@ export const Home: React.FC = () => {
   usePageTitle('Home');
   const [activeTab, setActiveTab] = useState<'events' | 'announcements' | 'resources' | 'activities'>('events');
 
-  // Fetch featured events
+  // Fetch featured events with real-time sync
   const { data: featuredEvents } = useQuery<EventItem[]>({
     queryKey: ['featured-events'],
     queryFn: async () => {
       const res = await apiClient.get('/events/featured');
       return res.data;
     },
+    refetchInterval: 8000, // 8-second real-time sync
   });
+
 
   // Fetch featured announcements
   const { data: featuredAnnouncements } = useQuery<Announcement[]>({
@@ -66,6 +71,9 @@ export const Home: React.FC = () => {
 
   return (
     <div className="bg-institutional-warm">
+      {/* Real-Time Event Sync & Push Alert Notification Banner */}
+      <LiveEventSyncNotification />
+
       {/* Dynamic Institutional Notice Notification Banner */}
       <LatestAnnouncementNotification />
 
@@ -150,9 +158,17 @@ export const Home: React.FC = () => {
                       <span className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
                         {ev.category}
                       </span>
-                      <span className="text-xs text-emerald-700 font-bold px-2 py-0.5 rounded-full bg-emerald-100">
-                        {ev.status}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        {ev.status !== 'UPCOMING' ? (
+                          <span className="text-[10px] text-slate-700 font-bold px-2 py-0.5 rounded-full bg-slate-200 flex items-center gap-1">
+                            <Lock className="w-2.5 h-2.5 text-slate-500" /> Locked
+                          </span>
+                        ) : (
+                          <span className="text-xs text-emerald-700 font-bold px-2 py-0.5 rounded-full bg-emerald-100">
+                            {ev.status}
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     <h3 className="text-base font-bold text-institutional-950 mb-2 line-clamp-2">
@@ -177,6 +193,12 @@ export const Home: React.FC = () => {
                         <MapPin className="w-3.5 h-3.5 text-emerald-600" />
                         <span className="truncate">{ev.venue}</span>
                       </div>
+                      {ev.status === 'UPCOMING' && ev.remainingCapacity !== null && ev.remainingCapacity !== undefined && (
+                        <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-800 pt-1">
+                          <Users className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          <span>{ev.remainingCapacity} seats remaining</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 

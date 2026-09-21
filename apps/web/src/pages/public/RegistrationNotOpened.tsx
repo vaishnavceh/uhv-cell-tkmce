@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../../api/client';
 import { EventItem } from '@uhv/shared-types';
 import { usePageTitle } from '../../hooks/usePageTitle';
-import { Calendar, Clock, MapPin, ArrowLeft, Hourglass, ShieldCheck, Mail, ArrowRight } from 'lucide-react';
+import { Calendar, Clock, MapPin, ArrowLeft, Hourglass, ShieldCheck, Mail, ArrowRight, Lock } from 'lucide-react';
 import { formatDate } from '../../utils/cn';
 import { Button } from '../../components/ui/Button';
 
@@ -59,6 +59,16 @@ export const RegistrationNotOpened: React.FC = () => {
               The registration link or form for this event has not been created yet or registration has not officially started. Please check back soon!
             </p>
           </div>
+
+          {/* Status Alert if not UPCOMING */}
+          {event && event.status !== 'UPCOMING' && (
+            <div className="p-3.5 rounded-xl bg-slate-100 border border-slate-300 text-xs text-slate-700 flex items-center justify-center gap-2 font-bold">
+              <Lock className="w-4 h-4 text-slate-500 shrink-0" />
+              <span>
+                Notice: This event is currently marked as <strong className="uppercase text-slate-900">{event.status}</strong>. Registrations are strictly restricted to upcoming events.
+              </span>
+            </div>
+          )}
 
           {/* Event Snapshot if available */}
           {event && (

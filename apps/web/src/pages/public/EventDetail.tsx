@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../../api/client';
 import { EventItem, RegistrationFieldDefinition } from '@uhv/shared-types';
 import { usePageTitle } from '../../hooks/usePageTitle';
-import { Calendar, Clock, MapPin, ArrowLeft, ExternalLink, ShieldCheck, Share2, Hourglass, Download, Building2, Users, Phone, Mail, Bell, Copy, Check, QrCode, CreditCard } from 'lucide-react';
+import { Calendar, Clock, MapPin, ArrowLeft, ExternalLink, ShieldCheck, Share2, Hourglass, Download, Building2, Users, Phone, Mail, Bell, Copy, Check, QrCode, CreditCard, Lock } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { formatDate } from '../../utils/cn';
 import { Button } from '../../components/ui/Button';
@@ -44,6 +44,7 @@ export const EventDetail: React.FC = () => {
   }
 
   const isRegistrationOpen = 
+    event.status === 'UPCOMING' &&
     event.enableInternalReg && 
     !event.isRegistrationClosed && 
     !event.registrationNotOpened &&
@@ -103,7 +104,12 @@ export const EventDetail: React.FC = () => {
                     🎟️ Free Entry
                   </span>
                 )}
-                {event.registrationNotOpened ? (
+                {event.status !== 'UPCOMING' ? (
+                  <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-200 border border-slate-300 text-slate-700 flex items-center gap-1">
+                    <Lock className="w-3 h-3 text-slate-500" />
+                    Registration Locked
+                  </span>
+                ) : event.registrationNotOpened ? (
                   <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 border border-amber-300 text-amber-900">
                     Registration Opening Soon
                   </span>
@@ -112,11 +118,14 @@ export const EventDetail: React.FC = () => {
                     ● Registration Open
                   </span>
                 ) : null}
-                <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800">
+                <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                  event.status === 'UPCOMING' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'
+                }`}>
                   Status: {event.status}
                 </span>
               </div>
             </div>
+
 
             <h1 className="text-2xl sm:text-3xl font-extrabold text-institutional-950 leading-tight">
               {event.title}
@@ -317,7 +326,37 @@ export const EventDetail: React.FC = () => {
               <span className="print:hidden">Official TKMCE UHV Cell Programme</span>
             </span>
 
-            {event.registrationNotOpened ? (
+            {event.status !== 'UPCOMING' ? (
+              <div className="p-6 sm:p-8 rounded-2xl bg-slate-100 border border-slate-300 text-slate-800 text-center space-y-4 shadow-2xs print:hidden">
+                <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-slate-200 text-slate-700 mx-auto shadow-inner border border-slate-300">
+                  <Lock className="w-7 h-7" />
+                </div>
+                <div className="space-y-1.5">
+                  <h4 className="text-lg font-black text-slate-900 tracking-tight">
+                    Event Registration Locked
+                  </h4>
+                  <p className="text-xs sm:text-sm text-slate-600 max-w-lg mx-auto leading-relaxed">
+                    Registrations are strictly permitted for <strong className="text-slate-900">UPCOMING</strong> events only.
+                    This event is currently marked as{' '}
+                    <span className="font-extrabold uppercase px-2 py-0.5 rounded bg-slate-200 text-slate-900 text-xs border border-slate-300">
+                      {event.status}
+                    </span>.
+                  </p>
+                </div>
+                <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
+                  <Link to="/events">
+                    <Button variant="outline" size="sm" className="text-xs font-bold border-slate-300 text-slate-800 hover:bg-slate-200">
+                      Browse Upcoming Events →
+                    </Button>
+                  </Link>
+                  <Link to="/contact">
+                    <Button variant="ghost" size="sm" className="text-xs font-bold text-slate-600 hover:text-slate-900">
+                      Contact Organizers
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            ) : event.registrationNotOpened ? (
               <div className="p-6 rounded-xl bg-amber-50 border border-amber-200 text-amber-950 text-center space-y-3 print:hidden">
                 <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-amber-100 text-amber-700 mx-auto">
                   <Hourglass className="w-5 h-5 animate-pulse" />

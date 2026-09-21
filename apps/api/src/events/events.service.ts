@@ -335,6 +335,12 @@ export class EventsService {
       throw new NotFoundException('Event not found');
     }
 
+    if (event.status !== 'UPCOMING') {
+      throw new ConflictException(
+        `Event registration is locked. Registrations are strictly permitted for UPCOMING events only (current status: ${event.status}).`
+      );
+    }
+
     if (event.registrationNotOpened) {
       throw new ConflictException('Registration has not been opened yet for this event.');
     }

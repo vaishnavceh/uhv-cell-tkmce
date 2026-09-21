@@ -101,10 +101,7 @@ export const Footer: React.FC = () => {
                 <Link to="/activities" className="hover:text-white text-emerald-200 transition">Activities</Link>
               </li>
               <li>
-                <Link to="/events" className="hover:text-white text-emerald-200 transition">Events Hub</Link>
-              </li>
-              <li>
-                <Link to="/workshops" className="hover:text-white text-emerald-200 transition">Workshops</Link>
+                <Link to="/events" className="hover:text-white text-emerald-200 transition">Events &amp; Workshops</Link>
               </li>
               <li>
                 <Link to="/team" className="hover:text-white text-emerald-200 transition">Committee</Link>

@@ -4,7 +4,7 @@ import { apiClient } from '../../api/client';
 import { EventItem, EventStatus } from '@uhv/shared-types';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { useDebounce } from '../../hooks/useDebounce';
-import { Calendar, Clock, MapPin, Search, ArrowRight, ExternalLink, Users, Building2, Phone, Bell } from 'lucide-react';
+import { Calendar, Clock, MapPin, Search, ArrowRight, ExternalLink, Users, Building2, Phone, Bell, Lock } from 'lucide-react';
 import { formatDate } from '../../utils/cn';
 import { Link } from 'react-router-dom';
 import { Input } from '../../components/ui/Input';
@@ -273,7 +273,18 @@ export const Events: React.FC = () => {
                   </div>
 
                   {/* Remaining Registrations Indicator in Event Center */}
-                  {ev.enableInternalReg && !ev.registrationNotOpened && !ev.isRegistrationClosed && (
+                  {ev.status !== EventStatus.UPCOMING ? (
+                    <div className="mt-3 pt-3 border-t border-slate-100">
+                      <div className="p-2 rounded-lg bg-slate-100/80 border border-slate-200 flex items-center justify-between text-xs text-slate-600">
+                        <span className="font-semibold flex items-center gap-1.5">
+                          <Lock className="w-3.5 h-3.5 text-slate-500 shrink-0" /> Registration:
+                        </span>
+                        <span className="font-bold text-slate-700 text-[11px] uppercase">
+                          Locked ({ev.status})
+                        </span>
+                      </div>
+                    </div>
+                  ) : ev.enableInternalReg && !ev.registrationNotOpened && !ev.isRegistrationClosed ? (
                     <div className="mt-3 pt-3 border-t border-slate-100">
                       {ev.registrationCapacity ? (
                         ev.remainingCapacity !== null && ev.remainingCapacity !== undefined ? (
@@ -311,7 +322,7 @@ export const Events: React.FC = () => {
                         </div>
                       )}
                     </div>
-                  )}
+                  ) : null}
                 </div>
 
                 <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
@@ -323,7 +334,12 @@ export const Events: React.FC = () => {
                     <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                   </Link>
 
-                  {ev.registrationNotOpened ? (
+                  {ev.status !== EventStatus.UPCOMING ? (
+                    <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded border border-slate-200 shadow-2xs">
+                      <Lock className="w-3 h-3 text-slate-400" />
+                      <span>Registration Locked</span>
+                    </span>
+                  ) : ev.registrationNotOpened ? (
                     <Link
                       to={`/events/${ev.slug}/not-opened`}
                       className="inline-flex items-center gap-1 text-xs font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-300 px-3 py-1.5 rounded shadow-2xs"

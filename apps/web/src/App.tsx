@@ -1,5 +1,5 @@
 import React, { useEffect, Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './components/ui/Toast';
@@ -91,7 +91,7 @@ export const App: React.FC = () => {
                   <Route path="/events/:slug" element={<EventDetail />} />
                   <Route path="/events/:slug/not-opened" element={<RegistrationNotOpened />} />
                   <Route path="/events/id/:id" element={<EventDetail />} />
-                  <Route path="/workshops" element={<Workshops />} />
+                  <Route path="/workshops" element={<Navigate to="/events" replace />} />
                   <Route path="/team" element={<Team />} />
                   <Route path="/resources" element={<Resources />} />
                   <Route path="/gallery" element={<Gallery />} />
@@ -117,7 +117,7 @@ export const App: React.FC = () => {
                   <Route path="objectives" element={<ObjectivesManager />} />
                   <Route path="activities" element={<ActivitiesManager />} />
                   <Route path="events" element={<EventsManager />} />
-                  <Route path="workshops" element={<WorkshopsManager />} />
+                  <Route path="workshops" element={<Navigate to="/admin/events" replace />} />
                   <Route path="team" element={<TeamManager />} />
                   <Route path="resources" element={<ResourcesManager />} />
                   <Route path="gallery" element={<GalleryManager />} />

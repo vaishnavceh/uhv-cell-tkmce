@@ -7,16 +7,17 @@ import { RoleName } from '@prisma/client';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 @ApiTags('Dashboard')
-@Controller('admin/dashboard')
+@Controller(['admin/dashboard', 'dashboard'])
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(RoleName.SUPER_ADMIN, RoleName.ADMIN, RoleName.EDITOR, RoleName.CONTENT_MANAGER)
 @ApiBearerAuth()
 export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 
-  @Get()
+  @Get(['', 'statistics'])
   @ApiOperation({ summary: 'Get overview metrics & statistics for CMS dashboard' })
   async getDashboardData() {
     return this.dashboardService.getStatistics();
   }
 }
+
