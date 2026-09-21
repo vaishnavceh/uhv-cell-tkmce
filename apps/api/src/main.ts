@@ -3,7 +3,7 @@ import { AppModule } from './app.module';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
-import compression from 'compression';
+import * as compression from 'compression';
 import { GlobalHttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
@@ -23,7 +23,8 @@ async function bootstrap() {
   );
 
   // Compression
-  app.use(compression());
+  const compressFn = typeof compression === 'function' ? compression : (compression as any).default;
+  if (compressFn) app.use(compressFn());
 
   // CORS configuration
   const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost,http://localhost:80,http://localhost:5173')

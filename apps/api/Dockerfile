@@ -25,7 +25,7 @@ RUN mkdir -p /app/uploads && chmod 777 /app/uploads
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "npx prisma generate && npx prisma db push && npx ts-node prisma/seed.ts && cd apps/api && npm run start:dev"]
+CMD ["sh", "-c", "npx prisma generate && npx prisma db push && npx tsc prisma/seed.ts --target es2022 --module commonjs --skipLibCheck --moduleResolution node && node prisma/seed.js && cd apps/api && npm run start:dev"]
 
 # Build stage for production
 FROM base AS builder

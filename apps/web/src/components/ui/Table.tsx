@@ -52,6 +52,16 @@ export const Table: React.FC<TableProps> = ({
   );
 };
 
+export const Thead: React.FC<React.HTMLAttributes<HTMLTableSectionElement>> = ({
+  className,
+  ...props
+}) => <thead className={cn('bg-slate-50 border-b border-slate-200', className)} {...props} />;
+
+export const Tbody: React.FC<React.HTMLAttributes<HTMLTableSectionElement>> = ({
+  className,
+  ...props
+}) => <tbody className={cn('divide-y divide-slate-100 bg-white', className)} {...props} />;
+
 export const TableHead: React.FC<React.ThHTMLAttributes<HTMLTableCellElement>> = ({
   className,
   ...props
@@ -82,3 +92,8 @@ export const TableCell: React.FC<React.TdHTMLAttributes<HTMLTableCellElement>> =
   className,
   ...props
 }) => <td className={cn('px-6 py-4 text-sm text-slate-700 align-middle', className)} {...props} />;
+
+export const Th = TableHead;
+export const Tr = TableRow;
+export const Td = TableCell;
+
