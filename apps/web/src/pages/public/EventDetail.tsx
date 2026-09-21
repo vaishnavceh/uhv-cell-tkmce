@@ -469,6 +469,7 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
   const [paymentReference, setPaymentReference] = React.useState('');
   const [copiedUpi, setCopiedUpi] = React.useState(false);
   const [copiedAcc, setCopiedAcc] = React.useState(false);
+  const [copiedIfsc, setCopiedIfsc] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [activePassIndex, setActivePassIndex] = React.useState<number | 'all'>('all');
   const [successData, setSuccessData] = React.useState<any>(null);
