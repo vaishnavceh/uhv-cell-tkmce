@@ -66,7 +66,14 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
       const uploadedUrl = data?.url || data?.file?.url || data?.data?.url || data?.data?.file?.url;
 
       if (uploadedUrl) {
-        onChange(uploadedUrl);
+        // If the URL is relative (e.g. /uploads/team/file.jpg), make it absolute
+        // so it resolves to the backend server (Render) not the frontend (Vercel)
+        let absoluteUrl = uploadedUrl;
+        if (uploadedUrl.startsWith('/')) {
+          const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/api\/v1\/?$/, '');
+          absoluteUrl = apiBase ? `${apiBase}${uploadedUrl}` : uploadedUrl;
+        }
+        onChange(absoluteUrl);
       } else {
         throw new Error('Upload server did not return image URL');
       }

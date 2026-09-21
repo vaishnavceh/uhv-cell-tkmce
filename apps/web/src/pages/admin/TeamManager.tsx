@@ -3,10 +3,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../api/client';
 import { TeamMember } from '@uhv/shared-types';
 import { usePageTitle } from '../../hooks/usePageTitle';
-import { Plus, Edit2, Trash2, Users, Search, Mail, ShieldAlert } from 'lucide-react';
+import { Plus, Edit2, Trash2, Users, Search, ShieldAlert } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { Textarea } from '../../components/ui/Textarea';
 import { Modal } from '../../components/ui/Modal';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { Badge } from '../../components/ui/Badge';
@@ -27,10 +26,7 @@ export const TeamManager: React.FC = () => {
     designation: '',
     department: '',
     role: 'UHV Cell Coordinator',
-    bio: '',
     photo: '',
-    email: '',
-    phone: '',
     order: 0,
     published: true,
   });
@@ -75,10 +71,7 @@ export const TeamManager: React.FC = () => {
       designation: '',
       department: '',
       role: 'UHV Cell Coordinator',
-      bio: '',
       photo: '',
-      email: '',
-      phone: '',
       order: (teamMembers?.length || 0) + 1,
       published: true,
     });
@@ -96,10 +89,7 @@ export const TeamManager: React.FC = () => {
       designation: item.designation,
       department: item.department,
       role: item.role,
-      bio: item.bio || '',
       photo: item.photo || '',
-      email: item.email || '',
-      phone: item.phone || '',
       order: item.order,
       published: item.published,
     });
@@ -211,11 +201,6 @@ export const TeamManager: React.FC = () => {
                             </span>
                           )}
                         </div>
-                        {item.email && (
-                          <p className="text-[11px] text-slate-500 flex items-center gap-1">
-                            <Mail className="w-3 h-3 text-slate-400" /> {item.email}
-                          </p>
-                        )}
                       </div>
                     </div>
                   </Td>
@@ -321,30 +306,6 @@ export const TeamManager: React.FC = () => {
             folder="team"
             aspectRatio="square"
             helperText="Upload official member portrait or headshot. Leave blank to display 'Image not uploaded'"
-          />
-
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="Official Email"
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              placeholder="name@tkmce.ac.in"
-            />
-            <Input
-              label="Contact Phone"
-              value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              placeholder="+91..."
-            />
-          </div>
-
-          <Textarea
-            label="Brief Bio / Responsibilities"
-            value={formData.bio}
-            onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-            rows={3}
-            placeholder="Profile details and areas of orientation..."
           />
 
           <div className="grid grid-cols-2 gap-4">
