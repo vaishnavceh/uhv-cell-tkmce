@@ -29,6 +29,13 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: |
+            platform-tools
+            platforms;android-34
+            platforms;android-35
+            build-tools;34.0.0
+            build-tools;35.0.0
 
       - name: Install Mobile Dependencies
         working-directory: apps/mobile
@@ -38,13 +45,13 @@ jobs:
       - name: Run Expo Prebuild
         working-directory: apps/mobile
         run: |
-          npx expo prebuild --platform android --clean
+          npx expo prebuild --platform android --clean --no-install
 
       - name: Build Standalone APK with Gradle
         working-directory: apps/mobile/android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --no-daemon
 
       - name: Prepare Downloadable APK
         run: |
