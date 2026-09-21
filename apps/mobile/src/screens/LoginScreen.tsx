@@ -40,9 +40,16 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       await setServerUrl(serverUrl);
       const data = await api.login(email, password);
 
-      const token = data?.tokens?.accessToken || data?.accessToken;
+      // Defensively parse token from all possible shapes (interceptor-unwrapped or raw NestJS TransformInterceptor)
+      const payload = (data && typeof data === 'object' && 'data' in data && (data as any).data) ? (data as any).data : data;
+      const token =
+        payload?.tokens?.accessToken ||
+        data?.tokens?.accessToken ||
+        payload?.accessToken ||
+        data?.accessToken;
+      const user = payload?.user || data?.user || { email };
+
       if (token) {
-        const user = data.user || { email };
         const finalServerUrl = await getServerUrl();
         await saveStoredAuth(token, user);
         onLoginSuccess(token, user, finalServerUrl);

@@ -79,6 +79,17 @@ export const getApiClient = async () => {
     },
   });
 
+  client.interceptors.response.use(
+    (response) => {
+      // Backend TransformInterceptor wraps responses in { success: true, data: ... }
+      if (response.data && response.data.success !== undefined && response.data.data !== undefined) {
+        return { ...response, data: response.data.data };
+      }
+      return response;
+    },
+    (error) => Promise.reject(error),
+  );
+
   return client;
 };
 
