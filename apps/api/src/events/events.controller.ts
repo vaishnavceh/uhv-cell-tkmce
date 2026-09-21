@@ -98,4 +98,37 @@ export class EventsController {
   ) {
     return this.eventsService.remove(id, userId);
   }
+
+  // --- Registrations ---
+
+  @Post(':id/register')
+  @Public()
+  @ApiOperation({ summary: 'Register for an event (Public)' })
+  async registerForEvent(
+    @Param('id') eventId: string,
+    @Body() dto: any, // CreateEventRegistrationDto imported locally or typed loosely
+  ) {
+    return this.eventsService.createRegistration(eventId, dto);
+  }
+
+  @Get(':id/registrations')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleName.SUPER_ADMIN, RoleName.ADMIN, RoleName.EDITOR, RoleName.CONTENT_MANAGER)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get all registrations for an event (Admin)' })
+  async getEventRegistrations(@Param('id') eventId: string) {
+    return this.eventsService.getRegistrations(eventId);
+  }
+
+  @Patch('registrations/:regId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleName.SUPER_ADMIN, RoleName.ADMIN, RoleName.EDITOR, RoleName.CONTENT_MANAGER)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update registration status (Admin)' })
+  async updateRegistrationStatus(
+    @Param('regId') regId: string,
+    @Body('status') status: any,
+  ) {
+    return this.eventsService.updateRegistrationStatus(regId, status);
+  }
 }

@@ -132,11 +132,33 @@ export interface EventItem {
   category: string;
   coverImage?: string | null;
   registrationUrl?: string | null;
+  enableInternalReg: boolean;
+  registrationUploadLink?: string | null;
+  registrationNotes?: string | null;
   status: EventStatus;
   featured: boolean;
   published: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export enum RegistrationStatus {
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+}
+
+export interface EventRegistration {
+  id: string;
+  eventId: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  institution?: string | null;
+  designation?: string | null;
+  uploadReference?: string | null;
+  status: RegistrationStatus;
+  createdAt: string;
 }
 
 // Workshop

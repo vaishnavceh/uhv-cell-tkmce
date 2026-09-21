@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../api/client';
 import { EventItem, EventStatus } from '@uhv/shared-types';
 import { usePageTitle } from '../../hooks/usePageTitle';
-import { Plus, Edit2, Trash2, Calendar, Search, ExternalLink } from 'lucide-react';
+import { Plus, Edit2, Trash2, Calendar, Search, ExternalLink, Users, Download, CheckCircle, XCircle } from 'lucide-react';
 import { formatDate } from '../../utils/cn';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -22,6 +22,7 @@ export const EventsManager: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<EventItem | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [viewingRegistrationsFor, setViewingRegistrationsFor] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -35,6 +36,9 @@ export const EventsManager: React.FC = () => {
     category: 'WORKSHOP',
     coverImage: '',
     registrationUrl: '',
+    enableInternalReg: false,
+    registrationUploadLink: '',
+    registrationNotes: '',
     status: EventStatus.UPCOMING,
     featured: false,
     published: true,
@@ -96,6 +100,9 @@ export const EventsManager: React.FC = () => {
       category: 'WORKSHOP',
       coverImage: '',
       registrationUrl: '',
+      enableInternalReg: false,
+      registrationUploadLink: '',
+      registrationNotes: '',
       status: EventStatus.UPCOMING,
       featured: false,
       published: true,
@@ -121,6 +128,9 @@ export const EventsManager: React.FC = () => {
       category: item.category,
       coverImage: item.coverImage || '',
       registrationUrl: item.registrationUrl || '',
+      enableInternalReg: item.enableInternalReg || false,
+      registrationUploadLink: item.registrationUploadLink || '',
+      registrationNotes: item.registrationNotes || '',
       status: item.status,
       featured: item.featured,
       published: item.published,
@@ -245,7 +255,16 @@ export const EventsManager: React.FC = () => {
                       {item.published ? 'Live' : 'Draft'}
                     </span>
                   </Td>
-                  <Td className="text-right space-x-1">
+                  <Td className="text-right space-x-1 whitespace-nowrap">
+                    {item.enableInternalReg && (
+                      <button
+                        onClick={() => setViewingRegistrationsFor(item.id)}
+                        className="p-1.5 rounded text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition"
+                        title="View Registrations"
+                      >
+                        <Users className="w-4 h-4" />
+                      </button>
+                    )}
                     <button
                       onClick={() => handleOpenEdit(item)}
                       className="p-1.5 rounded text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 transition"
@@ -267,6 +286,16 @@ export const EventsManager: React.FC = () => {
           </Tbody>
         </Table>
       </div>
+
+      {/* Registrations Viewer Modal */}
+      <Modal
+        isOpen={!!viewingRegistrationsFor}
+        onClose={() => setViewingRegistrationsFor(null)}
+        title="Event Registrations"
+        maxWidth="4xl"
+      >
+        <EventRegistrationsViewer eventId={viewingRegistrationsFor} />
+      </Modal>
 
       {/* Create / Edit Modal */}
       <Modal
@@ -390,6 +419,40 @@ export const EventsManager: React.FC = () => {
             </div>
           </div>
 
+          {/* REGISTRATION SETTINGS BLOCK */}
+          <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 space-y-4">
+            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Internal Registration Settings</h4>
+            
+            <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700">
+              <input
+                type="checkbox"
+                checked={formData.enableInternalReg}
+                onChange={(e) => setFormData({ ...formData, enableInternalReg: e.target.checked })}
+                className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4"
+              />
+              <span>Enable Internal Registration Form</span>
+            </label>
+
+            {formData.enableInternalReg && (
+              <>
+                <Input
+                  label="External Upload Link (e.g. Google Drive Folder)"
+                  value={formData.registrationUploadLink}
+                  onChange={(e) => setFormData({ ...formData, registrationUploadLink: e.target.value })}
+                  placeholder="https://drive.google.com/drive/folders/..."
+                  helperText="If provided, users will be asked to upload their documents here before submitting."
+                />
+                <Textarea
+                  label="Registration Instructions (Optional)"
+                  value={formData.registrationNotes}
+                  onChange={(e) => setFormData({ ...formData, registrationNotes: e.target.value })}
+                  rows={2}
+                  placeholder="E.g., Registration fee is ₹500. Please upload the transaction receipt."
+                />
+              </>
+            )}
+          </div>
+
           <div className="flex items-center gap-6 pt-2">
             <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700">
               <input
@@ -438,6 +501,121 @@ export const EventsManager: React.FC = () => {
         confirmText="Delete"
         variant="danger"
       />
+    </div>
+  );
+};
+
+// --- Registrations Viewer Sub-Component ---
+
+const EventRegistrationsViewer: React.FC<{ eventId: string | null }> = ({ eventId }) => {
+  const queryClient = useQueryClient();
+
+  const { data: registrations, isLoading } = useQuery<any[]>({
+    queryKey: ['admin-event-registrations', eventId],
+    queryFn: async () => {
+      const res = await apiClient.get(`/events/${eventId}/registrations`);
+      return res.data;
+    },
+    enabled: !!eventId,
+  });
+
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      await apiClient.patch(`/events/registrations/${id}`, { status });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-event-registrations', eventId] });
+    },
+  });
+
+  if (!eventId) return null;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between bg-slate-50 p-4 rounded-lg border border-slate-200">
+        <div>
+          <h3 className="text-sm font-bold text-slate-800">Registered Participants</h3>
+          <p className="text-xs text-slate-500">Manage approvals for internal registrations.</p>
+        </div>
+        <div className="text-xs font-bold text-slate-700 bg-white px-3 py-1.5 rounded-full border border-slate-200 shadow-sm">
+          Total: {registrations?.length || 0}
+        </div>
+      </div>
+
+      <div className="border border-slate-200 rounded-lg overflow-x-auto">
+        <Table>
+          <Thead>
+            <Tr>
+              <Th>Participant Name</Th>
+              <Th>Contact Details</Th>
+              <Th>Institution</Th>
+              <Th>Upload Ref</Th>
+              <Th>Status</Th>
+              <Th className="text-right">Actions</Th>
+            </Tr>
+          </Thead>
+          <Tbody>
+            {isLoading ? (
+              <Tr>
+                <Td colSpan={6} className="text-center py-6 text-xs text-slate-500">Loading registrations...</Td>
+              </Tr>
+            ) : !registrations || registrations.length === 0 ? (
+              <Tr>
+                <Td colSpan={6} className="text-center py-6 text-xs text-slate-500">No registrations yet.</Td>
+              </Tr>
+            ) : (
+              registrations.map((reg) => (
+                <Tr key={reg.id}>
+                  <Td>
+                    <div className="text-xs font-bold text-slate-800">{reg.fullName}</div>
+                    <div className="text-[10px] text-slate-500">{reg.designation}</div>
+                  </Td>
+                  <Td>
+                    <div className="text-xs text-slate-700">{reg.email}</div>
+                    <div className="text-xs text-slate-700">{reg.phone}</div>
+                  </Td>
+                  <Td className="text-xs text-slate-700 max-w-[150px] truncate" title={reg.institution}>
+                    {reg.institution || '-'}
+                  </Td>
+                  <Td className="text-xs font-mono text-slate-600 max-w-[100px] truncate" title={reg.uploadReference}>
+                    {reg.uploadReference || '-'}
+                  </Td>
+                  <Td>
+                    <Badge
+                      variant={
+                        reg.status === 'APPROVED' ? 'success' : reg.status === 'REJECTED' ? 'danger' : 'warning'
+                      }
+                      className="text-[10px]"
+                    >
+                      {reg.status}
+                    </Badge>
+                  </Td>
+                  <Td className="text-right space-x-2 whitespace-nowrap">
+                    {reg.status !== 'APPROVED' && (
+                      <button
+                        onClick={() => updateStatusMutation.mutate({ id: reg.id, status: 'APPROVED' })}
+                        className="text-emerald-600 hover:bg-emerald-50 p-1 rounded"
+                        title="Approve"
+                      >
+                        <CheckCircle className="w-4 h-4" />
+                      </button>
+                    )}
+                    {reg.status !== 'REJECTED' && (
+                      <button
+                        onClick={() => updateStatusMutation.mutate({ id: reg.id, status: 'REJECTED' })}
+                        className="text-red-600 hover:bg-red-50 p-1 rounded"
+                        title="Reject"
+                      >
+                        <XCircle className="w-4 h-4" />
+                      </button>
+                    )}
+                  </Td>
+                </Tr>
+              ))
+            )}
+          </Tbody>
+        </Table>
+      </div>
     </div>
   );
 };

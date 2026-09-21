@@ -80,6 +80,21 @@ export class CreateEventDto {
   @IsOptional()
   @IsBoolean()
   published?: boolean;
+
+  @ApiPropertyOptional({ default: false })
+  @IsOptional()
+  @IsBoolean()
+  enableInternalReg?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  registrationUploadLink?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  registrationNotes?: string;
 }
 
 export class UpdateEventDto {
@@ -152,4 +167,57 @@ export class UpdateEventDto {
   @IsOptional()
   @IsBoolean()
   published?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  enableInternalReg?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  registrationUploadLink?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  registrationNotes?: string;
+}
+
+export class CreateEventRegistrationDto {
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  fullName: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  email: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  phone: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  institution?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  designation?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  uploadReference?: string;
+}
+
+export class UpdateEventRegistrationStatusDto {
+  @ApiProperty({ enum: ['PENDING', 'APPROVED', 'REJECTED'] })
+  @IsEnum(['PENDING', 'APPROVED', 'REJECTED'])
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
 }

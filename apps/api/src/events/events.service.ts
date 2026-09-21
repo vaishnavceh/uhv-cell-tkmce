@@ -122,6 +122,9 @@ export class EventsService {
         category: dto.category || 'UHV Event',
         coverImage: dto.coverImage || null,
         registrationUrl: dto.registrationUrl || null,
+        enableInternalReg: dto.enableInternalReg ?? false,
+        registrationUploadLink: dto.registrationUploadLink || null,
+        registrationNotes: dto.registrationNotes || null,
         status: dto.status || EventStatus.UPCOMING,
         featured: dto.featured ?? false,
         published: dto.published ?? true,
@@ -178,5 +181,44 @@ export class EventsService {
     });
 
     return { success: true, message: 'Event deleted' };
+  }
+
+  // --- Registrations ---
+
+  async createRegistration(eventId: string, dto: any) {
+    const event = await this.findOne(eventId);
+    if (!event.enableInternalReg) {
+      throw new ConflictException('Internal registration is not enabled for this event.');
+    }
+
+    return this.prisma.eventRegistration.create({
+      data: {
+        eventId,
+        fullName: dto.fullName,
+        email: dto.email,
+        phone: dto.phone,
+        institution: dto.institution,
+        designation: dto.designation,
+        uploadReference: dto.uploadReference,
+      },
+    });
+  }
+
+  async getRegistrations(eventId: string) {
+    await this.findOne(eventId); // ensure event exists
+    return this.prisma.eventRegistration.findMany({
+      where: { eventId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async updateRegistrationStatus(regId: string, status: any) {
+    const reg = await this.prisma.eventRegistration.findUnique({ where: { id: regId } });
+    if (!reg) throw new NotFoundException('Registration not found');
+
+    return this.prisma.eventRegistration.update({
+      where: { id: regId },
+      data: { status },
+    });
   }
 }
