@@ -13,10 +13,12 @@ import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { Badge } from '../../components/ui/Badge';
 import { Table, Thead, Tbody, Tr, Th, Td } from '../../components/ui/Table';
 import { ImageUpload } from '../../components/ui/ImageUpload';
+import { useToast } from '../../components/ui/Toast';
 
 export const EventsManager: React.FC = () => {
   usePageTitle('Manage Events');
   const queryClient = useQueryClient();
+  const { success, error, info } = useToast();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -77,50 +79,106 @@ export const EventsManager: React.FC = () => {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const activeCollabs = formData.splitCollaborators.filter((c) => c.name.trim());
+      const activeCollabs = (formData.splitCollaborators || []).filter((c) => c.name && c.name.trim());
       const collabsString = activeCollabs.map((c) => c.name.trim()).join(', ');
       const firstLogo = activeCollabs.find((c) => c.logoUrl?.trim())?.logoUrl || null;
 
-      const activeCoords = formData.coordinators.filter((c) => c.name.trim());
+      const activeCoords = (formData.coordinators || []).filter((c) => c.name && c.name.trim());
       const firstCoord = activeCoords[0];
 
+      if (!formData.title?.trim()) {
+        throw new Error('Event Title is required.');
+      }
+      if (!formData.venue?.trim()) {
+        throw new Error('Venue is required.');
+      }
+      if (!formData.description?.trim()) {
+        throw new Error('Description is required.');
+      }
+      if (!formData.eventDate) {
+        throw new Error('Event Date is required.');
+      }
+
+      const d = new Date(formData.eventDate);
+      if (isNaN(d.getTime())) {
+        throw new Error('Invalid Event Date format.');
+      }
+      const parsedEventDate = d.toISOString();
+
+      let parsedRegEndDate: string | null = null;
+      if (formData.registrationEndDate && formData.registrationEndDate.trim() !== '') {
+        try {
+          const rd = new Date(formData.registrationEndDate);
+          if (!isNaN(rd.getTime())) {
+            parsedRegEndDate = rd.toISOString();
+          }
+        } catch {
+          parsedRegEndDate = null;
+        }
+      }
+
+      // Explicit whitelist payload conforming strictly to backend DTO
       const payload: any = {
-        ...formData,
-        coverImage: formData.coverImage || null,
-        collaborators: collabsString || formData.collaborators || null,
-        collaboratorLogo: firstLogo || formData.collaboratorLogo || null,
+        title: formData.title.trim(),
+        slug: formData.slug?.trim() || undefined,
+        description: formData.description.trim(),
+        shortDescription: formData.shortDescription?.trim() || null,
+        eventDate: parsedEventDate,
+        startTime: formData.startTime?.trim() || null,
+        endTime: formData.endTime?.trim() || null,
+        venue: formData.venue.trim(),
+        category: formData.category?.trim() || 'WORKSHOP',
+        coverImage: formData.coverImage?.trim() || null,
+        collaborators: collabsString || formData.collaborators?.trim() || null,
+        collaboratorLogo: firstLogo || formData.collaboratorLogo?.trim() || null,
         splitCollaborators: activeCollabs,
-        coordinatorName: firstCoord?.name || formData.coordinatorName || null,
-        coordinatorPhone: firstCoord?.phone || formData.coordinatorPhone || null,
+        coordinatorName: firstCoord?.name?.trim() || formData.coordinatorName?.trim() || null,
+        coordinatorPhone: firstCoord?.phone?.trim() || formData.coordinatorPhone?.trim() || null,
         coordinators: activeCoords,
-        isPaid: formData.isPaid,
-        ticketPrice: formData.ticketPrice ? Number(formData.ticketPrice) : 0,
-        upiId: formData.upiId || null,
-        upiQrCode: formData.upiQrCode || null,
+        isPaid: Boolean(formData.isPaid),
+        ticketPrice: formData.ticketPrice && !isNaN(Number(formData.ticketPrice)) ? Number(formData.ticketPrice) : 0,
+        upiId: formData.upiId?.trim() || null,
+        upiQrCode: formData.upiQrCode?.trim() || null,
         bankDetails: {
-          bankName: formData.bankName || '',
-          accountHolder: formData.bankAccountHolder || '',
-          accountNumber: formData.bankAccountNumber || '',
-          ifscCode: formData.bankIfscCode || '',
-          branch: formData.bankBranch || '',
+          bankName: formData.bankName?.trim() || '',
+          accountHolder: formData.bankAccountHolder?.trim() || '',
+          accountNumber: formData.bankAccountNumber?.trim() || '',
+          ifscCode: formData.bankIfscCode?.trim() || '',
+          branch: formData.bankBranch?.trim() || '',
         },
-        paymentInstructions: formData.paymentInstructions || null,
-        eventDate: new Date(formData.eventDate).toISOString(),
-        registrationCapacity: formData.registrationCapacity ? Number(formData.registrationCapacity) : null,
-        registrationEndDate: formData.registrationEndDate ? new Date(formData.registrationEndDate).toISOString() : null,
-        registrationNotOpened: formData.registrationNotOpened,
-        registrationFields: formData.registrationFields,
+        paymentInstructions: formData.paymentInstructions?.trim() || null,
+        registrationUrl: formData.registrationUrl?.trim() || null,
+        enableInternalReg: Boolean(formData.enableInternalReg),
+        registrationUploadLink: formData.registrationUploadLink?.trim() || null,
+        registrationNotes: formData.registrationNotes?.trim() || null,
+        registrationEndDate: parsedRegEndDate,
+        registrationCapacity: formData.registrationCapacity && !isNaN(Number(formData.registrationCapacity)) ? Number(formData.registrationCapacity) : null,
+        isRegistrationClosed: Boolean(formData.isRegistrationClosed),
+        registrationNotOpened: Boolean(formData.registrationNotOpened),
+        registrationFields: formData.registrationFields || [],
+        status: formData.status || EventStatus.UPCOMING,
+        featured: Boolean(formData.featured),
+        published: Boolean(formData.published),
       };
+
       if (editingItem) {
-        await apiClient.patch(`/events/${editingItem.id}`, payload);
+        return await apiClient.patch(`/events/${editingItem.id}`, payload);
       } else {
-        await apiClient.post('/events', payload);
+        return await apiClient.post('/events', payload);
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-events'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-dashboard-stats'] });
       setIsModalOpen(false);
+      const wasEditing = !!editingItem;
       resetForm();
+      success(wasEditing ? 'Event updated successfully.' : 'Event scheduled successfully.');
+    },
+    onError: (err: any) => {
+      const respMsg = err?.response?.data?.message || err?.message || 'Failed to save event.';
+      const formatted = Array.isArray(respMsg) ? respMsg.join(', ') : respMsg;
+      error(formatted);
     },
   });
 
@@ -130,10 +188,14 @@ export const EventsManager: React.FC = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-events'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-dashboard-stats'] });
       setDeleteId(null);
+      success('Event deleted successfully.');
     },
-    onError: () => {
+    onError: (err: any) => {
       setDeleteId(null);
+      const respMsg = err?.response?.data?.message || err?.message || 'Failed to delete event.';
+      error(Array.isArray(respMsg) ? respMsg.join(', ') : respMsg);
     },
   });
 
@@ -323,6 +385,29 @@ export const EventsManager: React.FC = () => {
       ];
     }
 
+    // Parse Bank Details safely
+    let parsedBankDetails: any = item.bankDetails || {};
+    if (typeof parsedBankDetails === 'string') {
+      try {
+        parsedBankDetails = JSON.parse(parsedBankDetails);
+      } catch {
+        parsedBankDetails = {};
+      }
+    }
+
+    // Parse Custom Registration Fields safely
+    let parsedRegFields: RegistrationFieldDefinition[] = [];
+    if (Array.isArray(item.registrationFields)) {
+      parsedRegFields = item.registrationFields;
+    } else if (typeof item.registrationFields === 'string') {
+      try {
+        const parsed = JSON.parse(item.registrationFields);
+        if (Array.isArray(parsed)) parsedRegFields = parsed;
+      } catch {
+        parsedRegFields = [];
+      }
+    }
+
     setFormData({
       title: item.title,
       slug: item.slug,
@@ -338,14 +423,14 @@ export const EventsManager: React.FC = () => {
       collaboratorLogo: item.collaboratorLogo || '',
       splitCollaborators: loadedCollaborators,
       isPaid: item.isPaid || false,
-      ticketPrice: item.ticketPrice ? String(item.ticketPrice) : '',
+      ticketPrice: item.ticketPrice !== null && item.ticketPrice !== undefined ? String(item.ticketPrice) : '',
       upiId: item.upiId || '',
       upiQrCode: item.upiQrCode || '',
-      bankName: (item.bankDetails as any)?.bankName || '',
-      bankAccountHolder: (item.bankDetails as any)?.accountHolder || '',
-      bankAccountNumber: (item.bankDetails as any)?.accountNumber || '',
-      bankIfscCode: (item.bankDetails as any)?.ifscCode || '',
-      bankBranch: (item.bankDetails as any)?.branch || '',
+      bankName: parsedBankDetails?.bankName || '',
+      bankAccountHolder: parsedBankDetails?.accountHolder || '',
+      bankAccountNumber: parsedBankDetails?.accountNumber || '',
+      bankIfscCode: parsedBankDetails?.ifscCode || '',
+      bankBranch: parsedBankDetails?.branch || '',
       paymentInstructions: item.paymentInstructions || '',
       coordinatorName: item.coordinatorName || '',
       coordinatorPhone: item.coordinatorPhone || '',
@@ -355,10 +440,10 @@ export const EventsManager: React.FC = () => {
       registrationUploadLink: item.registrationUploadLink || '',
       registrationNotes: item.registrationNotes || '',
       registrationEndDate: safeRegDate,
-      registrationCapacity: item.registrationCapacity ? String(item.registrationCapacity) : '',
+      registrationCapacity: item.registrationCapacity !== null && item.registrationCapacity !== undefined ? String(item.registrationCapacity) : '',
       isRegistrationClosed: item.isRegistrationClosed || false,
       registrationNotOpened: item.registrationNotOpened || false,
-      registrationFields: (item.registrationFields as RegistrationFieldDefinition[]) || [],
+      registrationFields: parsedRegFields,
       status: item.status,
       featured: item.featured,
       published: item.published,
@@ -1157,6 +1242,7 @@ export const EventsManager: React.FC = () => {
             <Button
               type="submit"
               size="sm"
+              isLoading={saveMutation.isPending}
               disabled={saveMutation.isPending}
               className="bg-institutional-850 hover:bg-institutional-950 text-white"
             >
@@ -1175,6 +1261,7 @@ export const EventsManager: React.FC = () => {
         message="Are you sure you want to permanently delete this event? This action is recorded in audit trail."
         confirmText="Delete"
         variant="danger"
+        isLoading={deleteMutation.isPending}
       />
     </div>
   );
@@ -1184,6 +1271,7 @@ export const EventsManager: React.FC = () => {
 
 const EventRegistrationsViewer: React.FC<{ eventId: string | null; event?: EventItem }> = ({ eventId, event }) => {
   const queryClient = useQueryClient();
+  const { success, error, info } = useToast();
   const customFields: RegistrationFieldDefinition[] = (event?.registrationFields as RegistrationFieldDefinition[]) || [];
 
   const { data: registrations, isLoading } = useQuery<any[]>({
@@ -1199,14 +1287,21 @@ const EventRegistrationsViewer: React.FC<{ eventId: string | null; event?: Event
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
       await apiClient.patch(`/events/registrations/${id}`, { status });
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['admin-event-registrations', eventId] });
+      queryClient.invalidateQueries({ queryKey: ['admin-events'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-dashboard-stats'] });
+      success(`Registration status marked as ${variables.status}.`);
+    },
+    onError: (err: any) => {
+      const respMsg = err?.response?.data?.message || err?.message || 'Failed to update registration status.';
+      error(Array.isArray(respMsg) ? respMsg.join(', ') : respMsg);
     },
   });
 
   const handleExportCSV = () => {
     if (!registrations || registrations.length === 0) {
-      alert('No registrations available to export.');
+      info('No registrations available to export.');
       return;
     }
 

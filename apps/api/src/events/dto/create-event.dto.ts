@@ -94,6 +94,31 @@ export class CreateEventDto {
   @IsOptional()
   bankDetails?: any;
 
+  @ApiPropertyOptional({ example: 'State Bank of India' })
+  @IsOptional()
+  @IsString()
+  bankName?: string;
+
+  @ApiPropertyOptional({ example: 'UHV Cell, TKMCE' })
+  @IsOptional()
+  @IsString()
+  bankAccountHolder?: string;
+
+  @ApiPropertyOptional({ example: '123456789012' })
+  @IsOptional()
+  @IsString()
+  bankAccountNumber?: string;
+
+  @ApiPropertyOptional({ example: 'SBIN0001234' })
+  @IsOptional()
+  @IsString()
+  bankIfscCode?: string;
+
+  @ApiPropertyOptional({ example: 'TKM College Campus Branch' })
+  @IsOptional()
+  @IsString()
+  bankBranch?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
@@ -259,6 +284,31 @@ export class UpdateEventDto {
   @ApiPropertyOptional()
   @IsOptional()
   bankDetails?: any;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  bankName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  bankAccountHolder?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  bankAccountNumber?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  bankIfscCode?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  bankBranch?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

@@ -179,6 +179,23 @@ export class EventsService {
       throw new ConflictException(`Event with slug "${slug}" already exists`);
     }
 
+    let bankDetails = dto.bankDetails || {};
+    if (
+      dto.bankName ||
+      dto.bankAccountHolder ||
+      dto.bankAccountNumber ||
+      dto.bankIfscCode ||
+      dto.bankBranch
+    ) {
+      bankDetails = {
+        bankName: dto.bankName || bankDetails.bankName || '',
+        accountHolder: dto.bankAccountHolder || bankDetails.accountHolder || '',
+        accountNumber: dto.bankAccountNumber || bankDetails.accountNumber || '',
+        ifscCode: dto.bankIfscCode || bankDetails.ifscCode || '',
+        branch: dto.bankBranch || bankDetails.branch || '',
+      };
+    }
+
     const event = await this.prisma.event.create({
       data: {
         title: dto.title,
@@ -197,7 +214,7 @@ export class EventsService {
         ticketPrice: dto.ticketPrice ? Number(dto.ticketPrice) : 0,
         upiId: dto.upiId || null,
         upiQrCode: dto.upiQrCode || null,
-        bankDetails: dto.bankDetails || {},
+        bankDetails,
         paymentInstructions: dto.paymentInstructions || null,
         coordinatorName: dto.coordinatorName || null,
         coordinatorPhone: dto.coordinatorPhone || null,
@@ -230,10 +247,16 @@ export class EventsService {
   }
 
   async update(id: string, dto: UpdateEventDto, userId?: string) {
-    await this.findOne(id);
+    const existing = await this.findOne(id);
     const data: any = { ...dto };
     if (dto.slug) {
       data.slug = this.slugify(dto.slug);
+      if (data.slug !== existing.slug) {
+        const conflict = await this.prisma.event.findUnique({ where: { slug: data.slug } });
+        if (conflict && conflict.id !== id) {
+          throw new ConflictException(`Event with slug "${data.slug}" already exists`);
+        }
+      }
     }
     if (dto.eventDate) {
       data.eventDate = new Date(dto.eventDate);
@@ -286,6 +309,29 @@ export class EventsService {
     if (dto.splitCollaborators !== undefined) {
       data.splitCollaborators = dto.splitCollaborators || [];
     }
+
+    // Merge flat bank fields if present
+    if (
+      dto.bankName ||
+      dto.bankAccountHolder ||
+      dto.bankAccountNumber ||
+      dto.bankIfscCode ||
+      dto.bankBranch
+    ) {
+      data.bankDetails = {
+        bankName: dto.bankName || (data.bankDetails as any)?.bankName || '',
+        accountHolder: dto.bankAccountHolder || (data.bankDetails as any)?.accountHolder || '',
+        accountNumber: dto.bankAccountNumber || (data.bankDetails as any)?.accountNumber || '',
+        ifscCode: dto.bankIfscCode || (data.bankDetails as any)?.ifscCode || '',
+        branch: dto.bankBranch || (data.bankDetails as any)?.branch || '',
+      };
+    }
+    // Delete non-schema fields before passing to prisma
+    delete data.bankName;
+    delete data.bankAccountHolder;
+    delete data.bankAccountNumber;
+    delete data.bankIfscCode;
+    delete data.bankBranch;
 
     const updated = await this.prisma.event.update({
       where: { id },
