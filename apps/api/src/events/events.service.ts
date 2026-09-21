@@ -130,6 +130,7 @@ export class EventsService {
         venue: dto.venue,
         category: dto.category || 'UHV Event',
         coverImage: dto.coverImage || null,
+        collaborators: dto.collaborators || null,
         registrationUrl: dto.registrationUrl || null,
         enableInternalReg: dto.enableInternalReg ?? false,
         registrationUploadLink: dto.registrationUploadLink || null,
@@ -176,6 +177,9 @@ export class EventsService {
     }
     if (dto.registrationNotOpened !== undefined) {
       data.registrationNotOpened = dto.registrationNotOpened;
+    }
+    if (dto.collaborators !== undefined) {
+      data.collaborators = dto.collaborators || null;
     }
 
     const updated = await this.prisma.event.update({

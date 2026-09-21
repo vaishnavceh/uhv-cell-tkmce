@@ -127,6 +127,7 @@ model Event {
   venue                 String
   category              String              @default("UHV Event")
   coverImage            String?
+  collaborators         String?
   registrationUrl       String?
   enableInternalReg     Boolean             @default(false)
   registrationUploadLink String?

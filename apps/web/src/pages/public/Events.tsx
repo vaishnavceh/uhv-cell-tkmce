@@ -128,6 +128,11 @@ export const Events: React.FC = () => {
                   <h3 className="text-lg font-bold text-institutional-950 mb-2 leading-snug">
                     {ev.title}
                   </h3>
+                  {ev.collaborators && (
+                    <div className="mb-2 text-[11px] font-semibold text-emerald-800 bg-emerald-50/90 px-2 py-0.5 rounded border border-emerald-200 inline-block">
+                      🤝 With: {ev.collaborators}
+                    </div>
+                  )}
                   <p className="text-xs text-slate-600 mb-4 line-clamp-3 leading-relaxed">
                     {ev.shortDescription || ev.description}
                   </p>

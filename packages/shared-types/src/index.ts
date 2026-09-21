@@ -131,6 +131,7 @@ export interface EventItem {
   venue: string;
   category: string;
   coverImage?: string | null;
+  collaborators?: string | null;
   registrationUrl?: string | null;
   enableInternalReg: boolean;
   registrationUploadLink?: string | null;

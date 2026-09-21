@@ -63,6 +63,7 @@ export const EventsManager: React.FC = () => {
     mutationFn: async () => {
       const payload: any = {
         ...formData,
+        collaborators: formData.collaborators || null,
         eventDate: new Date(formData.eventDate).toISOString(),
         registrationCapacity: formData.registrationCapacity ? Number(formData.registrationCapacity) : null,
         registrationEndDate: formData.registrationEndDate ? new Date(formData.registrationEndDate).toISOString() : null,
@@ -108,6 +109,7 @@ export const EventsManager: React.FC = () => {
       venue: 'TKMCE Campus',
       category: 'WORKSHOP',
       coverImage: '',
+      collaborators: '',
       registrationUrl: '',
       enableInternalReg: false,
       registrationUploadLink: '',
@@ -193,6 +195,7 @@ export const EventsManager: React.FC = () => {
       venue: item.venue,
       category: item.category,
       coverImage: item.coverImage || '',
+      collaborators: item.collaborators || '',
       registrationUrl: item.registrationUrl || '',
       enableInternalReg: item.enableInternalReg || false,
       registrationUploadLink: item.registrationUploadLink || '',
@@ -281,11 +284,16 @@ export const EventsManager: React.FC = () => {
                 <Tr key={item.id}>
                   <Td>
                     <div className="space-y-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-xs font-bold text-institutional-950">{item.title}</p>
                         {item.featured && (
                           <span className="px-1.5 py-0.5 rounded text-[9px] bg-amber-100 text-amber-800 font-bold uppercase">
                             Featured
+                          </span>
+                        )}
+                        {item.collaborators && (
+                          <span className="px-1.5 py-0.5 rounded text-[9px] bg-blue-50 text-blue-700 font-semibold border border-blue-200">
+                            🤝 {item.collaborators}
                           </span>
                         )}
                       </div>
@@ -443,6 +451,14 @@ export const EventsManager: React.FC = () => {
             onChange={(e) => setFormData({ ...formData, venue: e.target.value })}
             placeholder="e.g. TKMCE Central Auditorium / Google Meet"
             required
+          />
+
+          <Input
+            label="Collaborators / Co-hosts (Optional)"
+            value={formData.collaborators}
+            onChange={(e) => setFormData({ ...formData, collaborators: e.target.value })}
+            placeholder="e.g. Government of Kerala, AICTE, IEEE"
+            helperText="Organizations or departments collaborating on this event (rendered on event page & official ticket pass)"
           />
 
           <Input

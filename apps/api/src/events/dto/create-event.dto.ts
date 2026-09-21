@@ -61,6 +61,11 @@ export class CreateEventDto {
   @IsString()
   coverImage?: string;
 
+  @ApiPropertyOptional({ example: 'Government of Kerala, AICTE' })
+  @IsOptional()
+  @IsString()
+  collaborators?: string;
+
   @ApiPropertyOptional({ example: 'https://fdp-si.aicte-india.org/' })
   @IsOptional()
   @IsString()
@@ -170,6 +175,11 @@ export class UpdateEventDto {
   @IsOptional()
   @IsString()
   coverImage?: string;
+
+  @ApiPropertyOptional({ example: 'Government of Kerala, AICTE' })
+  @IsOptional()
+  @IsString()
+  collaborators?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

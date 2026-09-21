@@ -4,7 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../../api/client';
 import { EventItem, RegistrationFieldDefinition } from '@uhv/shared-types';
 import { usePageTitle } from '../../hooks/usePageTitle';
-import { Calendar, Clock, MapPin, ArrowLeft, ExternalLink, ShieldCheck, Share2, Hourglass } from 'lucide-react';
+import { Calendar, Clock, MapPin, ArrowLeft, ExternalLink, ShieldCheck, Share2, Hourglass, Download, Building2 } from 'lucide-react';
+import { toPng } from 'html-to-image';
 import { formatDate } from '../../utils/cn';
 import { Button } from '../../components/ui/Button';
 
@@ -95,6 +96,16 @@ export const EventDetail: React.FC = () => {
               <p className="text-base text-slate-600 italic leading-relaxed">
                 {event.shortDescription}
               </p>
+            )}
+
+            {event.collaborators && (
+              <div className="flex items-center gap-2.5 p-3 rounded-lg bg-emerald-50/70 border border-emerald-200 text-xs text-emerald-950">
+                <Building2 className="w-4 h-4 text-emerald-700 shrink-0" />
+                <span>
+                  <strong className="font-bold">Organized in collaboration with:</strong>{' '}
+                  <span className="font-semibold text-emerald-900">{event.collaborators}</span>
+                </span>
+              </div>
             )}
           </div>
 
@@ -212,6 +223,37 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
   const [customData, setCustomData] = React.useState<Record<string, any>>({});
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [successData, setSuccessData] = React.useState<any>(null);
+  const [isDownloadingPng, setIsDownloadingPng] = React.useState(false);
+  const [qrDataUrl, setQrDataUrl] = React.useState<string>('');
+  const ticketRef = React.useRef<HTMLDivElement>(null);
+
+  // Pre-fetch QR Code to Data URL for instant, CORS-free PNG snapshot generation
+  React.useEffect(() => {
+    let isMounted = true;
+    if (successData) {
+      const regCode = `UHV-${(successData.id || 'TICKET').slice(0, 8).toUpperCase()}`;
+      const url = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
+        `TKMCE UHV EVENT: ${event.title}\nPASS: ${regCode}\nNAME: ${successData.fullName}`
+      )}`;
+      fetch(url)
+        .then((res) => res.blob())
+        .then((blob) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            if (isMounted && typeof reader.result === 'string') {
+              setQrDataUrl(reader.result);
+            }
+          };
+          reader.readAsDataURL(blob);
+        })
+        .catch((err) => {
+          console.warn('Could not pre-convert QR code to base64:', err);
+        });
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [successData, event.title]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -234,9 +276,34 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
     window.print();
   };
 
+  const handleDownloadPng = async () => {
+    if (!ticketRef.current) return;
+    setIsDownloadingPng(true);
+    try {
+      const dataUrl = await toPng(ticketRef.current, {
+        pixelRatio: 2,
+        cacheBust: true,
+        backgroundColor: '#090d16',
+      });
+      const regCode = `UHV-${(successData.id || 'TICKET').slice(0, 8).toUpperCase()}`;
+      const cleanSlug = (event.slug || 'uhv-event').replace(/[^a-zA-Z0-9_-]/g, '-').toLowerCase();
+      const link = document.createElement('a');
+      link.download = `${cleanSlug}-pass-${regCode.toLowerCase()}.png`;
+      link.href = dataUrl;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Failed to generate PNG pass:', error);
+      alert('Could not render PNG directly. Please use "Print Pass / Save PDF" to print or save your ticket.');
+    } finally {
+      setIsDownloadingPng(false);
+    }
+  };
+
   if (successData) {
     const regCode = `UHV-${(successData.id || 'TICKET').slice(0, 8).toUpperCase()}`;
-    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(
+    const fallbackQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
       `TKMCE UHV EVENT: ${event.title}\nPASS: ${regCode}\nNAME: ${successData.fullName}`
     )}`;
 
@@ -271,9 +338,21 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
             <ShieldCheck className="w-6 h-6" />
           </div>
           <h3 className="text-xl font-black text-slate-900">Registration Confirmed!</h3>
-          <p className="text-xs text-slate-500">Your entry pass has been issued. Save or print your ticket below.</p>
-          <div className="flex items-center justify-center gap-3 pt-2">
-            <Button onClick={handlePrint} className="bg-institutional-850 hover:bg-institutional-950 text-white font-bold text-xs shadow-md">
+          <p className="text-xs text-slate-500">Your entry pass has been issued. Download your ticket as a PNG image or print below.</p>
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+            <Button
+              onClick={handleDownloadPng}
+              disabled={isDownloadingPng}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md flex items-center gap-2 px-5 py-2.5"
+            >
+              <Download className="w-4 h-4" />
+              {isDownloadingPng ? 'Generating PNG Pass...' : '📥 Download Pass (PNG)'}
+            </Button>
+            <Button
+              onClick={handlePrint}
+              variant="outline"
+              className="border-slate-300 text-slate-700 hover:bg-slate-100 font-bold text-xs shadow-xs"
+            >
               🖨️ Print Pass / Save PDF
             </Button>
             <Button
@@ -298,120 +377,137 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
         </div>
 
         {/* --- CONCERT-STYLE TICKET STUB (Reference Design) --- */}
-        <div
-          id="uhv-event-ticket"
-          className="relative max-w-4xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-[#090d16] text-white flex flex-col md:flex-row select-none"
-        >
-          {/* Main Left Ticket Section */}
-          <div className="flex-1 p-6 sm:p-8 flex flex-col justify-between relative overflow-hidden bg-gradient-to-br from-[#0c1322] via-[#090d16] to-[#05070c]">
-            {/* Background Texture / Abstract Vinyl Graphic */}
-            <div className="absolute -left-12 -bottom-12 w-48 h-48 rounded-full border border-slate-700/20 pointer-events-none" />
-            <div className="absolute -left-6 -bottom-6 w-36 h-36 rounded-full border border-slate-700/20 pointer-events-none" />
-            <div className="absolute -left-0 -bottom-0 w-24 h-24 rounded-full border border-slate-700/20 pointer-events-none" />
+        <div className="overflow-x-auto pb-4 pt-2">
+          <div
+            id="uhv-event-ticket"
+            ref={ticketRef}
+            className="relative w-full max-w-4xl min-w-[680px] mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-[#090d16] text-white flex flex-row select-none"
+          >
+            {/* Main Left Ticket Section */}
+            <div className="flex-1 p-6 sm:p-8 flex flex-col justify-between relative overflow-hidden bg-gradient-to-br from-[#0c1322] via-[#090d16] to-[#05070c]">
+              {/* Background Texture / Abstract Vinyl Graphic */}
+              <div className="absolute -left-12 -bottom-12 w-48 h-48 rounded-full border border-slate-700/20 pointer-events-none" />
+              <div className="absolute -left-6 -bottom-6 w-36 h-36 rounded-full border border-slate-700/20 pointer-events-none" />
+              <div className="absolute -left-0 -bottom-0 w-24 h-24 rounded-full border border-slate-700/20 pointer-events-none" />
 
-            <div>
-              {/* Header Badge */}
-              <div className="flex items-center justify-between gap-2 mb-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center text-[10px] font-black text-black">
-                    UHV
+              <div>
+                {/* Header Badge */}
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center text-[10px] font-black text-black shrink-0">
+                      UHV
+                    </div>
+                    <span className="text-[10px] uppercase font-extrabold tracking-widest text-emerald-400">
+                      TKM College of Engineering • AICTE Cell
+                    </span>
                   </div>
-                  <span className="text-[10px] uppercase font-extrabold tracking-widest text-emerald-400">
-                    TKM College of Engineering • AICTE Cell
+                  <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded bg-emerald-950/80 border border-emerald-500/30 text-emerald-300 shrink-0">
+                    Official Entry Pass
                   </span>
                 </div>
-                <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded bg-emerald-950/80 border border-emerald-500/30 text-emerald-300">
-                  Official Entry Pass
-                </span>
-              </div>
 
-              {/* Event Title in Bold Concert Headline */}
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black uppercase tracking-tight text-white leading-none mb-4 drop-shadow-sm">
-                {event.title}
-              </h1>
+                {/* Event Collaborators Banner on Ticket */}
+                {event.collaborators && (
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-800/90 border border-slate-700/80 text-[10px] font-semibold text-slate-200 mb-3 w-max">
+                    <span className="text-emerald-400 font-bold uppercase tracking-wider">In Collaboration With:</span>
+                    <span className="text-white font-extrabold">{event.collaborators}</span>
+                  </div>
+                )}
 
-              {/* Event Metadata Capsules */}
-              <div className="flex flex-wrap items-center gap-2 mb-6">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-800/90 border border-slate-700 text-xs font-semibold text-slate-200">
-                  <Calendar className="w-3.5 h-3.5 text-emerald-400" />
-                  {formatDate(event.eventDate)}
-                </span>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-800/90 border border-slate-700 text-xs font-semibold text-slate-200">
-                  <Clock className="w-3.5 h-3.5 text-emerald-400" />
-                  {event.startTime || 'TBA'} - {event.endTime || 'End'}
-                </span>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-800/90 border border-slate-700 text-xs font-semibold text-slate-200 truncate max-w-[240px]">
-                  <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  {event.venue}
-                </span>
-              </div>
-            </div>
+                {/* Event Title in Bold Concert Headline */}
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black uppercase tracking-tight text-white leading-none mb-4 drop-shadow-sm">
+                  {event.title}
+                </h1>
 
-            {/* Attendee Details & Custom Fields */}
-            <div className="pt-4 border-t border-slate-800/80">
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-left">
-                <div>
-                  <span className="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">Attendee</span>
-                  <span className="text-xs font-extrabold text-white truncate block">{successData.fullName}</span>
+                {/* Event Metadata Capsules */}
+                <div className="flex flex-wrap items-center gap-2 mb-6">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-800/90 border border-slate-700 text-xs font-semibold text-slate-200">
+                    <Calendar className="w-3.5 h-3.5 text-emerald-400" />
+                    {formatDate(event.eventDate)}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-800/90 border border-slate-700 text-xs font-semibold text-slate-200">
+                    <Clock className="w-3.5 h-3.5 text-emerald-400" />
+                    {event.startTime || 'TBA'} - {event.endTime || 'End'}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-800/90 border border-slate-700 text-xs font-semibold text-slate-200 truncate max-w-[240px]">
+                    <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    {event.venue}
+                  </span>
                 </div>
-                <div>
-                  <span className="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">Contact</span>
-                  <span className="text-xs text-slate-300 truncate block">{successData.email}</span>
+              </div>
+
+              {/* Attendee Details & Custom Fields */}
+              <div className="pt-4 border-t border-slate-800/80">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-left">
+                  <div>
+                    <span className="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">Attendee</span>
+                    <span className="text-xs font-extrabold text-white truncate block">{successData.fullName}</span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">Contact</span>
+                    <span className="text-xs text-slate-300 truncate block">{successData.email}</span>
+                  </div>
+                  {/* Dynamically render custom field answers on ticket */}
+                  {customFields.map((f) => {
+                    const val = customData[f.id] || customData[f.label];
+                    if (!val) return null;
+                    return (
+                      <div key={f.id}>
+                        <span className="text-[9px] uppercase font-bold text-emerald-400 block tracking-wider">{f.label}</span>
+                        <span className="text-xs font-bold text-slate-100 truncate block">{val}</span>
+                      </div>
+                    );
+                  })}
                 </div>
-                {/* Dynamically render custom field answers on ticket */}
-                {customFields.map((f) => {
-                  const val = customData[f.id] || customData[f.label];
-                  if (!val) return null;
-                  return (
-                    <div key={f.id}>
-                      <span className="text-[9px] uppercase font-bold text-emerald-400 block tracking-wider">{f.label}</span>
-                      <span className="text-xs font-bold text-slate-100 truncate block">{val}</span>
-                    </div>
-                  );
-                })}
               </div>
             </div>
-          </div>
 
-          {/* Perforated Tear Line Divider with Notch Cutouts */}
-          <div className="relative flex md:flex-col items-center justify-between">
-            <div className="hidden md:block absolute -top-3 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-slate-100 border border-slate-300" />
-            <div className="w-full md:w-0 h-0 md:h-full border-t-2 md:border-t-0 md:border-r-2 border-dashed border-slate-600/70 my-0" />
-            <div className="hidden md:block absolute -bottom-3 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-slate-100 border border-slate-300" />
-          </div>
-
-          {/* Right Stub Section */}
-          <div className="w-full md:w-56 p-6 bg-[#0f172a] flex md:flex-col items-center justify-between gap-4 border-t md:border-t-0 md:border-l border-slate-800 text-center relative">
-            {/* Rotated Stub Header */}
-            <div className="text-center w-full">
-              <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400 block">
-                ADMIT ONE
-              </span>
-              <span className="font-mono text-xs font-bold text-slate-300 block tracking-wider mt-0.5">
-                {regCode}
-              </span>
+            {/* Perforated Tear Line Divider with Notch Cutouts */}
+            <div className="relative flex flex-col items-center justify-between">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-slate-100 border border-slate-300" />
+              <div className="h-full border-r-2 border-dashed border-slate-600/70 my-0" />
+              <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-slate-100 border border-slate-300" />
             </div>
 
-            {/* QR Code */}
-            <div className="bg-white p-2 rounded-xl shadow-lg border border-slate-300">
-              <img
-                src={qrUrl}
-                alt="Ticket QR Code"
-                className="w-24 h-24 sm:w-28 sm:h-28 object-contain"
-              />
-            </div>
-
-            {/* Barcode Graphic */}
-            <div className="w-full space-y-1">
-              {/* Simulated Barcode Lines */}
-              <div className="h-9 w-full flex items-center justify-center gap-[2.5px] bg-white p-1 rounded">
-                {[3, 1, 2, 4, 1, 3, 2, 1, 4, 2, 1, 3, 2, 4, 1, 2, 3, 1, 4, 2, 1, 3, 2, 1, 4, 2].map((w, i) => (
-                  <div key={i} className="h-full bg-black" style={{ width: `${w * 1.5}px` }} />
-                ))}
+            {/* Right Stub Section */}
+            <div className="w-56 p-6 bg-[#0f172a] flex flex-col items-center justify-between gap-4 border-l border-slate-800 text-center relative shrink-0">
+              {/* Stub Header */}
+              <div className="text-center w-full">
+                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400 block">
+                  ADMIT ONE
+                </span>
+                <span className="font-mono text-xs font-bold text-slate-300 block tracking-wider mt-0.5">
+                  {regCode}
+                </span>
+                {event.collaborators && (
+                  <span className="text-[8px] font-bold text-slate-400 block uppercase truncate max-w-[150px] mx-auto mt-0.5">
+                    {event.collaborators}
+                  </span>
+                )}
               </div>
-              <span className="text-[9px] font-mono text-slate-400 tracking-widest block uppercase">
-                {regCode}
-              </span>
+
+              {/* QR Code */}
+              <div className="bg-white p-2 rounded-xl shadow-lg border border-slate-300">
+                <img
+                  src={qrDataUrl || fallbackQrUrl}
+                  crossOrigin="anonymous"
+                  alt="Ticket QR Code"
+                  className="w-24 h-24 sm:w-28 sm:h-28 object-contain"
+                />
+              </div>
+
+              {/* Barcode Graphic */}
+              <div className="w-full space-y-1">
+                {/* Simulated Barcode Lines */}
+                <div className="h-9 w-full flex items-center justify-center gap-[2.5px] bg-white p-1 rounded">
+                  {[3, 1, 2, 4, 1, 3, 2, 1, 4, 2, 1, 3, 2, 4, 1, 2, 3, 1, 4, 2, 1, 3, 2, 1, 4, 2].map((w, i) => (
+                    <div key={i} className="h-full bg-black" style={{ width: `${w * 1.5}px` }} />
+                  ))}
+                </div>
+                <span className="text-[9px] font-mono text-slate-400 tracking-widest block uppercase">
+                  {regCode}
+                </span>
+              </div>
             </div>
           </div>
         </div>
