@@ -42,6 +42,7 @@ export const EventsManager: React.FC = () => {
     registrationEndDate: '',
     registrationCapacity: '',
     isRegistrationClosed: false,
+    registrationNotOpened: false,
     registrationFields: [] as RegistrationFieldDefinition[],
     status: EventStatus.UPCOMING,
     featured: false,
@@ -65,6 +66,7 @@ export const EventsManager: React.FC = () => {
         eventDate: new Date(formData.eventDate).toISOString(),
         registrationCapacity: formData.registrationCapacity ? Number(formData.registrationCapacity) : null,
         registrationEndDate: formData.registrationEndDate ? new Date(formData.registrationEndDate).toISOString() : null,
+        registrationNotOpened: formData.registrationNotOpened,
         registrationFields: formData.registrationFields,
       };
       if (editingItem) {
@@ -113,6 +115,7 @@ export const EventsManager: React.FC = () => {
       registrationEndDate: '',
       registrationCapacity: '',
       isRegistrationClosed: false,
+      registrationNotOpened: false,
       registrationFields: [],
       status: EventStatus.UPCOMING,
       featured: false,
@@ -197,6 +200,7 @@ export const EventsManager: React.FC = () => {
       registrationEndDate: safeRegDate,
       registrationCapacity: item.registrationCapacity ? String(item.registrationCapacity) : '',
       isRegistrationClosed: item.isRegistrationClosed || false,
+      registrationNotOpened: item.registrationNotOpened || false,
       registrationFields: (item.registrationFields as RegistrationFieldDefinition[]) || [],
       status: item.status,
       featured: item.featured,
@@ -487,6 +491,24 @@ export const EventsManager: React.FC = () => {
                 <option value={EventStatus.DRAFT}>DRAFT</option>
               </select>
             </div>
+          </div>
+
+          {/* Registration Link Not Created / Not Opened Yet Toggle */}
+          <div className="p-3.5 bg-amber-50/90 border border-amber-200 rounded-lg">
+            <label className="flex items-start gap-2.5 cursor-pointer text-xs font-semibold text-amber-950">
+              <input
+                type="checkbox"
+                checked={formData.registrationNotOpened}
+                onChange={(e) => setFormData({ ...formData, registrationNotOpened: e.target.checked })}
+                className="rounded text-amber-600 focus:ring-amber-500 w-4 h-4 mt-0.5"
+              />
+              <div>
+                <span className="font-bold text-amber-900 block">Registration link not created / Registration not opened yet</span>
+                <span className="text-[11px] text-amber-700 font-normal block mt-0.5">
+                  When checked, attendees will see a dedicated "Registration Has Not Been Opened Yet" page and notice for both internal forms and external links. When unchecked, it directly opens the registration link or internal form.
+                </span>
+              </div>
+            </label>
           </div>
 
           {/* REGISTRATION SETTINGS BLOCK */}

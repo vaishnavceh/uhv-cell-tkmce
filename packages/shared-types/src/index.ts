@@ -138,6 +138,7 @@ export interface EventItem {
   registrationEndDate?: string | null;
   registrationCapacity?: number | null;
   isRegistrationClosed: boolean;
+  registrationNotOpened: boolean;
   registrationFields: RegistrationFieldDefinition[];
   status: EventStatus;
   featured: boolean;

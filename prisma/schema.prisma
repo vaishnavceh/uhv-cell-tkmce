@@ -134,6 +134,7 @@ model Event {
   registrationEndDate   DateTime?
   registrationCapacity  Int?
   isRegistrationClosed  Boolean             @default(false)
+  registrationNotOpened Boolean             @default(false)
   registrationFields    Json                @default("[]")
   status                EventStatus         @default(UPCOMING)
   featured              Boolean             @default(false)

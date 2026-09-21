@@ -18,6 +18,7 @@ const Objectives = lazy(() => import('./pages/public/Objectives').then(m => ({ d
 const Activities = lazy(() => import('./pages/public/Activities').then(m => ({ default: m.Activities })));
 const Events = lazy(() => import('./pages/public/Events').then(m => ({ default: m.Events })));
 const EventDetail = lazy(() => import('./pages/public/EventDetail').then(m => ({ default: m.EventDetail })));
+const RegistrationNotOpened = lazy(() => import('./pages/public/RegistrationNotOpened').then(m => ({ default: m.RegistrationNotOpened })));
 const Workshops = lazy(() => import('./pages/public/Workshops').then(m => ({ default: m.Workshops })));
 const Team = lazy(() => import('./pages/public/Team').then(m => ({ default: m.Team })));
 const Resources = lazy(() => import('./pages/public/Resources').then(m => ({ default: m.Resources })));
@@ -88,6 +89,7 @@ export const App: React.FC = () => {
                   <Route path="/activities" element={<Activities />} />
                   <Route path="/events" element={<Events />} />
                   <Route path="/events/:slug" element={<EventDetail />} />
+                  <Route path="/events/:slug/not-opened" element={<RegistrationNotOpened />} />
                   <Route path="/events/id/:id" element={<EventDetail />} />
                   <Route path="/workshops" element={<Workshops />} />
                   <Route path="/team" element={<Team />} />

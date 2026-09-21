@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../../api/client';
 import { EventItem, RegistrationFieldDefinition } from '@uhv/shared-types';
 import { usePageTitle } from '../../hooks/usePageTitle';
-import { Calendar, Clock, MapPin, ArrowLeft, ExternalLink, ShieldCheck, Share2 } from 'lucide-react';
+import { Calendar, Clock, MapPin, ArrowLeft, ExternalLink, ShieldCheck, Share2, Hourglass } from 'lucide-react';
 import { formatDate } from '../../utils/cn';
 import { Button } from '../../components/ui/Button';
 
@@ -45,6 +45,7 @@ export const EventDetail: React.FC = () => {
   const isRegistrationOpen = 
     event.enableInternalReg && 
     !event.isRegistrationClosed && 
+    !event.registrationNotOpened &&
     (!event.registrationEndDate || new Date() <= new Date(event.registrationEndDate));
 
   return (
@@ -71,11 +72,15 @@ export const EventDetail: React.FC = () => {
                 {event.category}
               </span>
               <div className="flex items-center gap-2">
-                {event.enableInternalReg && isRegistrationOpen && (
+                {event.registrationNotOpened ? (
+                  <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 border border-amber-300 text-amber-900">
+                    Registration Opening Soon
+                  </span>
+                ) : event.enableInternalReg && isRegistrationOpen ? (
                   <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-600 text-white shadow-sm">
                     ● Registration Open
                   </span>
-                )}
+                ) : null}
                 <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800">
                   Status: {event.status}
                 </span>
@@ -135,7 +140,24 @@ export const EventDetail: React.FC = () => {
               <span className="print:hidden">Official TKMCE UHV Cell Programme</span>
             </span>
 
-            {event.enableInternalReg ? (
+            {event.registrationNotOpened ? (
+              <div className="p-6 rounded-xl bg-amber-50 border border-amber-200 text-amber-950 text-center space-y-3 print:hidden">
+                <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-amber-100 text-amber-700 mx-auto">
+                  <Hourglass className="w-5 h-5 animate-pulse" />
+                </div>
+                <h4 className="text-base font-black text-amber-900">Registration Has Not Been Opened Yet</h4>
+                <p className="text-xs text-amber-800 max-w-md mx-auto leading-relaxed">
+                  The registration link for this event has not been created yet or registration has not officially started. Please check back soon!
+                </p>
+                <div className="pt-1">
+                  <Link to={`/events/${event.slug}/not-opened`}>
+                    <Button variant="outline" size="sm" className="text-xs font-bold border-amber-300 text-amber-900 hover:bg-amber-100">
+                      View Registration Notice Page →
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            ) : event.enableInternalReg ? (
               isRegistrationOpen ? (
                 <div className="space-y-4">
                   {event.registrationEndDate && (

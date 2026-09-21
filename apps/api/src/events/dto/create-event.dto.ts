@@ -110,6 +110,11 @@ export class CreateEventDto {
   @IsBoolean()
   isRegistrationClosed?: boolean;
 
+  @ApiPropertyOptional({ default: false })
+  @IsOptional()
+  @IsBoolean()
+  registrationNotOpened?: boolean;
+
   @ApiPropertyOptional()
   @IsOptional()
   registrationFields?: any;
@@ -214,6 +219,11 @@ export class UpdateEventDto {
   @IsOptional()
   @IsBoolean()
   isRegistrationClosed?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  registrationNotOpened?: boolean;
 
   @ApiPropertyOptional()
   @IsOptional()

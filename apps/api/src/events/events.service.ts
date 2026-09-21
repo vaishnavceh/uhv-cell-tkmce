@@ -137,6 +137,7 @@ export class EventsService {
         registrationEndDate: dto.registrationEndDate ? new Date(dto.registrationEndDate) : null,
         registrationCapacity: dto.registrationCapacity ? Number(dto.registrationCapacity) : null,
         isRegistrationClosed: dto.isRegistrationClosed ?? false,
+        registrationNotOpened: dto.registrationNotOpened ?? false,
         registrationFields: dto.registrationFields || [],
         status: dto.status || EventStatus.UPCOMING,
         featured: dto.featured ?? false,
@@ -172,6 +173,9 @@ export class EventsService {
     }
     if (dto.registrationFields !== undefined) {
       data.registrationFields = dto.registrationFields || [];
+    }
+    if (dto.registrationNotOpened !== undefined) {
+      data.registrationNotOpened = dto.registrationNotOpened;
     }
 
     const updated = await this.prisma.event.update({
@@ -223,6 +227,10 @@ export class EventsService {
 
     if (!event) {
       throw new NotFoundException('Event not found');
+    }
+
+    if (event.registrationNotOpened) {
+      throw new ConflictException('Registration has not been opened yet for this event.');
     }
 
     if (!event.enableInternalReg) {

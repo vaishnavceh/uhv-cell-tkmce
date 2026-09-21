@@ -102,11 +102,15 @@ export const Events: React.FC = () => {
                       {ev.category}
                     </span>
                     <div className="flex items-center gap-1.5">
-                      {ev.enableInternalReg && !ev.isRegistrationClosed && (!ev.registrationEndDate || new Date() <= new Date(ev.registrationEndDate)) && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-600 text-white shadow-xs">
+                      {ev.registrationNotOpened ? (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 shadow-2xs">
+                          Registration Not Opened
+                        </span>
+                      ) : ev.enableInternalReg && !ev.isRegistrationClosed && (!ev.registrationEndDate || new Date() <= new Date(ev.registrationEndDate)) ? (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-600 text-white shadow-2xs">
                           Registration Open
                         </span>
-                      )}
+                      ) : null}
                       <span
                         className={`text-xs font-bold px-2 py-0.5 rounded-full ${
                           ev.status === EventStatus.UPCOMING
@@ -155,7 +159,14 @@ export const Events: React.FC = () => {
                     <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                   </Link>
 
-                  {ev.enableInternalReg ? (
+                  {ev.registrationNotOpened ? (
+                    <Link
+                      to={`/events/${ev.slug}/not-opened`}
+                      className="inline-flex items-center gap-1 text-xs font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-300 px-3 py-1.5 rounded shadow-2xs"
+                    >
+                      <span>Registration Not Opened</span>
+                    </Link>
+                  ) : ev.enableInternalReg ? (
                     <Link
                       to={`/events/${ev.slug}`}
                       className="inline-flex items-center gap-1 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 px-3 py-1.5 rounded shadow-sm"
