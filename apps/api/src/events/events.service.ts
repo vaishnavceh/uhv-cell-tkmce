@@ -577,12 +577,48 @@ export class EventsService {
     return { ...updated, alreadyCheckedIn: false };
   }
 
-  async verifyPayment(regId: string) {
+  async verifyPayment(regId: string, status: string = 'VERIFIED') {
     const reg = await this.prisma.eventRegistration.findUnique({ where: { id: regId } });
     if (!reg) throw new NotFoundException('Registration not found');
     return this.prisma.eventRegistration.update({
       where: { id: regId },
-      data: { paymentStatus: 'VERIFIED' },
+      data: { paymentStatus: status },
     });
+  }
+
+  async spotPaymentCheckIn(regId: string) {
+    const reg = await this.prisma.eventRegistration.findUnique({ where: { id: regId } });
+    if (!reg) throw new NotFoundException('Registration not found');
+    const note = reg.paymentReference ? `${reg.paymentReference} (Gate Spot Verified)` : 'SPOT PAYMENT (Collected at Gate)';
+    const updated = await this.prisma.eventRegistration.update({
+      where: { id: regId },
+      data: {
+        paymentStatus: 'VERIFIED',
+        checkedIn: true,
+        checkedInAt: new Date(),
+        paymentReference: note,
+      },
+      include: {
+        event: {
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+            eventDate: true,
+            startTime: true,
+            endTime: true,
+            venue: true,
+            category: true,
+            isPaid: true,
+            ticketPrice: true,
+            status: true,
+            collaborators: true,
+            coordinatorName: true,
+            coordinatorPhone: true,
+          },
+        },
+      },
+    });
+    return { ...updated, alreadyCheckedIn: false };
   }
 }

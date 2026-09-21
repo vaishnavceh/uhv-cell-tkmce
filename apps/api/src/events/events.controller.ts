@@ -155,7 +155,19 @@ export class EventsController {
   @Roles(RoleName.SUPER_ADMIN, RoleName.ADMIN, RoleName.EDITOR, RoleName.CONTENT_MANAGER)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Verify payment for a registration (Admin)' })
-  async verifyPayment(@Param('regId') regId: string) {
-    return this.eventsService.verifyPayment(regId);
+  async verifyPayment(
+    @Param('regId') regId: string,
+    @Body('status') status?: string,
+  ) {
+    return this.eventsService.verifyPayment(regId, status);
+  }
+
+  @Patch('registrations/:regId/spot-payment')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleName.SUPER_ADMIN, RoleName.ADMIN, RoleName.EDITOR, RoleName.CONTENT_MANAGER)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Record spot payment and check in attendee at the venue gate (Admin)' })
+  async spotPaymentCheckIn(@Param('regId') regId: string) {
+    return this.eventsService.spotPaymentCheckIn(regId);
   }
 }

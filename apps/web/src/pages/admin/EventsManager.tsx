@@ -1299,6 +1299,22 @@ const EventRegistrationsViewer: React.FC<{ eventId: string | null; event?: Event
     },
   });
 
+  const verifyPaymentMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      await apiClient.patch(`/events/registrations/${id}/verify-payment`, { status });
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-event-registrations', eventId] });
+      queryClient.invalidateQueries({ queryKey: ['admin-events'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-dashboard-stats'] });
+      success(variables.status === 'VERIFIED' ? 'Payment cross-checked & verified!' : 'Payment marked as pending verification.');
+    },
+    onError: (err: any) => {
+      const respMsg = err?.response?.data?.message || err?.message || 'Failed to update payment status.';
+      error(Array.isArray(respMsg) ? respMsg.join(', ') : respMsg);
+    },
+  });
+
   const handleExportCSV = () => {
     if (!registrations || registrations.length === 0) {
       info('No registrations available to export.');
@@ -1359,8 +1375,20 @@ const EventRegistrationsViewer: React.FC<{ eventId: string | null; event?: Event
         return escapeCSV(raw ?? '');
       }),
       escapeCSV(reg.paymentReference || reg.uploadReference || ''),
-      escapeCSV(reg.paymentStatus || 'FREE'),
-      escapeCSV(reg.paymentStatus === 'VERIFIED' ? 'Yes' : 'No'),
+      escapeCSV(
+        !event?.isPaid
+          ? 'FREE'
+          : reg.paymentStatus === 'VERIFIED'
+          ? 'PAID (VERIFIED BY ADMIN)'
+          : 'NOT VERIFIED (PENDING CROSS-CHECK)'
+      ),
+      escapeCSV(
+        !event?.isPaid
+          ? 'N/A (FREE)'
+          : reg.paymentStatus === 'VERIFIED'
+          ? 'Yes (Verified)'
+          : 'No (Pending Verification)'
+      ),
       escapeCSV(reg.status || 'APPROVED'),
       escapeCSV(reg.checkedIn ? 'Yes' : 'No'),
       escapeCSV(reg.checkedInAt ? new Date(reg.checkedInAt).toLocaleString() : ''),
@@ -1458,13 +1486,31 @@ const EventRegistrationsViewer: React.FC<{ eventId: string | null; event?: Event
                   </Td>
                   <Td>
                     {event?.isPaid ? (
-                      <div>
-                        <span className="text-xs font-black text-emerald-800">
+                      <div className="space-y-1">
+                        <span className="text-xs font-black text-emerald-800 block">
                           ₹{reg.totalAmount !== undefined ? reg.totalAmount : (event.ticketPrice || 0) * (reg.groupSize || 1)}
                         </span>
-                        <span className="block text-[9px] uppercase font-bold text-slate-500">
-                          {reg.paymentStatus || 'PENDING'}
-                        </span>
+                        <div>
+                          {reg.paymentStatus === 'VERIFIED' ? (
+                            <button
+                              type="button"
+                              onClick={() => verifyPaymentMutation.mutate({ id: reg.id, status: 'PENDING' })}
+                              title="Click to revert to Unverified / Pending"
+                              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-100 hover:bg-emerald-200 text-emerald-800 border border-emerald-300 transition"
+                            >
+                              ✅ Verified / Paid
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => verifyPaymentMutation.mutate({ id: reg.id, status: 'VERIFIED' })}
+                              title="Cross-check against bank account/UPI and click to verify"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-bold bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 transition shadow-sm"
+                            >
+                              🔍 Cross-Check &amp; Verify
+                            </button>
+                          )}
+                        </div>
                       </div>
                     ) : (
                       <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
