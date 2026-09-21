@@ -195,6 +195,10 @@ export class EventsService {
         collaboratorLogo: dto.collaboratorLogo || null,
         isPaid: dto.isPaid ?? false,
         ticketPrice: dto.ticketPrice ? Number(dto.ticketPrice) : 0,
+        upiId: dto.upiId || null,
+        upiQrCode: dto.upiQrCode || null,
+        bankDetails: dto.bankDetails || {},
+        paymentInstructions: dto.paymentInstructions || null,
         coordinatorName: dto.coordinatorName || null,
         coordinatorPhone: dto.coordinatorPhone || null,
         coordinators: dto.coordinators || [],
@@ -257,6 +261,18 @@ export class EventsService {
     }
     if (dto.ticketPrice !== undefined) {
       data.ticketPrice = dto.ticketPrice ? Number(dto.ticketPrice) : 0;
+    }
+    if (dto.upiId !== undefined) {
+      data.upiId = dto.upiId || null;
+    }
+    if (dto.upiQrCode !== undefined) {
+      data.upiQrCode = dto.upiQrCode || null;
+    }
+    if (dto.bankDetails !== undefined) {
+      data.bankDetails = dto.bankDetails || {};
+    }
+    if (dto.paymentInstructions !== undefined) {
+      data.paymentInstructions = dto.paymentInstructions || null;
     }
     if (dto.coordinatorName !== undefined) {
       data.coordinatorName = dto.coordinatorName || null;
@@ -353,6 +369,8 @@ export class EventsService {
     const totalAmount = event.isPaid ? ((Number(event.ticketPrice) || 0) * requestedSeats) : 0;
     const paymentStatus = event.isPaid ? (dto.paymentStatus || 'PENDING') : 'FREE';
 
+    const paymentReference = dto.paymentReference || dto.uploadReference || null;
+
     const registration = await this.prisma.eventRegistration.create({
       data: {
         eventId,
@@ -361,7 +379,8 @@ export class EventsService {
         phone: dto.phone,
         institution: dto.institution || null,
         designation: dto.designation || null,
-        uploadReference: dto.uploadReference || null,
+        uploadReference: paymentReference,
+        paymentReference,
         ticketType: dto.ticketType || (requestedSeats > 1 ? 'GROUP' : 'INDIVIDUAL'),
         groupSize: requestedSeats,
         groupName: dto.groupName || null,

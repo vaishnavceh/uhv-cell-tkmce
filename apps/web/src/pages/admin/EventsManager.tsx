@@ -40,6 +40,14 @@ export const EventsManager: React.FC = () => {
     splitCollaborators: [] as SplitCollaborator[],
     isPaid: false,
     ticketPrice: '',
+    upiId: '',
+    upiQrCode: '',
+    bankName: '',
+    bankAccountHolder: '',
+    bankAccountNumber: '',
+    bankIfscCode: '',
+    bankBranch: '',
+    paymentInstructions: '',
     coordinatorName: '',
     coordinatorPhone: '',
     coordinators: [] as EventCoordinator[],
@@ -87,6 +95,16 @@ export const EventsManager: React.FC = () => {
         coordinators: activeCoords,
         isPaid: formData.isPaid,
         ticketPrice: formData.ticketPrice ? Number(formData.ticketPrice) : 0,
+        upiId: formData.upiId || null,
+        upiQrCode: formData.upiQrCode || null,
+        bankDetails: {
+          bankName: formData.bankName || '',
+          accountHolder: formData.bankAccountHolder || '',
+          accountNumber: formData.bankAccountNumber || '',
+          ifscCode: formData.bankIfscCode || '',
+          branch: formData.bankBranch || '',
+        },
+        paymentInstructions: formData.paymentInstructions || null,
         eventDate: new Date(formData.eventDate).toISOString(),
         registrationCapacity: formData.registrationCapacity ? Number(formData.registrationCapacity) : null,
         registrationEndDate: formData.registrationEndDate ? new Date(formData.registrationEndDate).toISOString() : null,
@@ -137,6 +155,14 @@ export const EventsManager: React.FC = () => {
       splitCollaborators: [],
       isPaid: false,
       ticketPrice: '',
+      upiId: '',
+      upiQrCode: '',
+      bankName: '',
+      bankAccountHolder: '',
+      bankAccountNumber: '',
+      bankIfscCode: '',
+      bankBranch: '',
+      paymentInstructions: '',
       coordinatorName: '',
       coordinatorPhone: '',
       coordinators: [],
@@ -313,6 +339,14 @@ export const EventsManager: React.FC = () => {
       splitCollaborators: loadedCollaborators,
       isPaid: item.isPaid || false,
       ticketPrice: item.ticketPrice ? String(item.ticketPrice) : '',
+      upiId: item.upiId || '',
+      upiQrCode: item.upiQrCode || '',
+      bankName: (item.bankDetails as any)?.bankName || '',
+      bankAccountHolder: (item.bankDetails as any)?.accountHolder || '',
+      bankAccountNumber: (item.bankDetails as any)?.accountNumber || '',
+      bankIfscCode: (item.bankDetails as any)?.ifscCode || '',
+      bankBranch: (item.bankDetails as any)?.branch || '',
+      paymentInstructions: item.paymentInstructions || '',
       coordinatorName: item.coordinatorName || '',
       coordinatorPhone: item.coordinatorPhone || '',
       coordinators: loadedCoordinators,
@@ -745,8 +779,10 @@ export const EventsManager: React.FC = () => {
               </div>
 
               {/* Event Pricing & Fee Section */}
-              <div className="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-3">
-                <h5 className="text-xs font-bold text-emerald-950 uppercase tracking-wider">Event Pricing &amp; Registration Fee</h5>
+              <div className="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-3.5">
+                <h5 className="text-xs font-bold text-emerald-950 uppercase tracking-wider">
+                  Event Pricing &amp; Payment Options
+                </h5>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">Admission Type</label>
@@ -773,6 +809,100 @@ export const EventsManager: React.FC = () => {
                     />
                   )}
                 </div>
+
+                {formData.isPaid && (
+                  <div className="space-y-3 pt-2 border-t border-emerald-200/80">
+                    <div className="space-y-0.5">
+                      <span className="text-[11px] font-bold text-emerald-900 uppercase tracking-wide block">
+                        📱 Google Pay / UPI Settings
+                      </span>
+                      <p className="text-[10px] text-slate-500">
+                        Provide UPI ID and/or QR code image URL for instant UPI mobile payments.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <Input
+                        label="UPI ID / VPA (Google Pay / PhonePe)"
+                        value={formData.upiId}
+                        onChange={(e) => setFormData({ ...formData, upiId: e.target.value })}
+                        placeholder="e.g. uhvcell@okaxis or tkmce@sbi"
+                        helperText="Allows attendees to pay or copy directly."
+                      />
+                      <Input
+                        label="Google Pay / UPI QR Code URL (URL only)"
+                        value={formData.upiQrCode}
+                        onChange={(e) => setFormData({ ...formData, upiQrCode: e.target.value })}
+                        placeholder="https://... or /assets/upi_qr.png"
+                        helperText="URL only — does not use server disk storage."
+                      />
+                    </div>
+
+                    {formData.upiQrCode && (
+                      <div className="flex items-center gap-3 p-2 bg-white rounded-lg border border-emerald-200">
+                        <span className="text-[10px] text-slate-500 font-semibold">QR Code Preview:</span>
+                        <img
+                          src={formData.upiQrCode}
+                          alt="UPI QR Code"
+                          className="w-16 h-16 object-contain rounded border border-slate-200 bg-white p-1"
+                          onError={(e) => (e.currentTarget.style.display = 'none')}
+                        />
+                      </div>
+                    )}
+
+                    <div className="space-y-0.5 pt-1">
+                      <span className="text-[11px] font-bold text-emerald-900 uppercase tracking-wide block">
+                        🏦 Bank Account Transfer Details (Optional)
+                      </span>
+                      <p className="text-[10px] text-slate-500">
+                        For institutional NEFT / RTGS / IMPS direct transfers.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <Input
+                        label="Bank Name"
+                        value={formData.bankName}
+                        onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
+                        placeholder="e.g. State Bank of India"
+                      />
+                      <Input
+                        label="Account Holder Name"
+                        value={formData.bankAccountHolder}
+                        onChange={(e) => setFormData({ ...formData, bankAccountHolder: e.target.value })}
+                        placeholder="e.g. UHV Cell, TKMCE"
+                      />
+                      <Input
+                        label="Account Number"
+                        value={formData.bankAccountNumber}
+                        onChange={(e) => setFormData({ ...formData, bankAccountNumber: e.target.value })}
+                        placeholder="e.g. 123456789012"
+                      />
+                      <Input
+                        label="IFSC Code"
+                        value={formData.bankIfscCode}
+                        onChange={(e) => setFormData({ ...formData, bankIfscCode: e.target.value })}
+                        placeholder="e.g. SBIN0001234"
+                      />
+                      <div className="sm:col-span-2">
+                        <Input
+                          label="Branch / Campus Location"
+                          value={formData.bankBranch}
+                          onChange={(e) => setFormData({ ...formData, bankBranch: e.target.value })}
+                          placeholder="e.g. TKM College Campus Branch, Karicode"
+                        />
+                      </div>
+                    </div>
+
+                    <Textarea
+                      label="Payment Instructions / Note"
+                      value={formData.paymentInstructions}
+                      onChange={(e) => setFormData({ ...formData, paymentInstructions: e.target.value })}
+                      placeholder="e.g. Scan the QR code or pay via UPI/NEFT, then enter your 12-digit UPI Reference / UTR Number to complete registration."
+                      rows={2}
+                    />
+                  </div>
+                )}
               </div>
 
               <Input
@@ -1096,7 +1226,7 @@ const EventRegistrationsViewer: React.FC<{ eventId: string | null; event?: Event
       'Ticket Fee (₹)',
       'Total Amount (₹)',
       ...customFields.map((f) => f.label || f.id),
-      'Upload Reference',
+      'Payment Ref / UTR / Upload Ref',
       'Status',
       'Registered At',
     ];
@@ -1129,7 +1259,7 @@ const EventRegistrationsViewer: React.FC<{ eventId: string | null; event?: Event
         }
         return escapeCSV(raw ?? '');
       }),
-      escapeCSV(reg.uploadReference || ''),
+      escapeCSV(reg.paymentReference || reg.uploadReference || ''),
       escapeCSV(reg.status || 'APPROVED'),
       escapeCSV(reg.createdAt ? new Date(reg.createdAt).toLocaleString() : ''),
     ]);
@@ -1182,7 +1312,7 @@ const EventRegistrationsViewer: React.FC<{ eventId: string | null; event?: Event
               {customFields.map((f) => (
                 <Th key={f.id}>{f.label || 'Custom Field'}</Th>
               ))}
-              <Th>Upload Ref</Th>
+              <Th>Payment Ref / Proof</Th>
               <Th>Status</Th>
               <Th className="text-right">Actions</Th>
             </Tr>
@@ -1260,8 +1390,14 @@ const EventRegistrationsViewer: React.FC<{ eventId: string | null; event?: Event
                       </Td>
                     );
                   })}
-                  <Td className="text-xs font-mono text-slate-600 max-w-[100px] truncate" title={reg.uploadReference}>
-                    {reg.uploadReference || '-'}
+                  <Td className="text-xs font-mono text-slate-700 max-w-[130px] truncate" title={reg.paymentReference || reg.uploadReference}>
+                    {reg.paymentReference || reg.uploadReference ? (
+                      <span className="bg-slate-100 text-slate-800 font-semibold px-1.5 py-0.5 rounded border border-slate-200">
+                        {reg.paymentReference || reg.uploadReference}
+                      </span>
+                    ) : (
+                      <span className="text-slate-400">-</span>
+                    )}
                   </Td>
                   <Td>
                     <Badge

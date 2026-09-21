@@ -80,6 +80,25 @@ export class CreateEventDto {
   @IsOptional()
   ticketPrice?: number;
 
+  @ApiPropertyOptional({ example: 'uhvcell@okaxis' })
+  @IsOptional()
+  @IsString()
+  upiId?: string;
+
+  @ApiPropertyOptional({ example: 'https://example.com/upi-qr.png' })
+  @IsOptional()
+  @IsString()
+  upiQrCode?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  bankDetails?: any;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  paymentInstructions?: string;
+
   @ApiPropertyOptional({ example: 'Dr. Sarah Jenkins' })
   @IsOptional()
   @IsString()
@@ -227,6 +246,25 @@ export class UpdateEventDto {
   @IsOptional()
   ticketPrice?: number;
 
+  @ApiPropertyOptional({ example: 'uhvcell@okaxis' })
+  @IsOptional()
+  @IsString()
+  upiId?: string;
+
+  @ApiPropertyOptional({ example: 'https://example.com/upi-qr.png' })
+  @IsOptional()
+  @IsString()
+  upiQrCode?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  bankDetails?: any;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  paymentInstructions?: string;
+
   @ApiPropertyOptional({ example: 'Dr. Sarah Jenkins' })
   @IsOptional()
   @IsString()
@@ -334,6 +372,11 @@ export class CreateEventRegistrationDto {
   @IsOptional()
   @IsString()
   uploadReference?: string;
+
+  @ApiPropertyOptional({ example: 'UPI123456789012' })
+  @IsOptional()
+  @IsString()
+  paymentReference?: string;
 
   @ApiPropertyOptional({ default: 'INDIVIDUAL', enum: ['INDIVIDUAL', 'GROUP'] })
   @IsOptional()

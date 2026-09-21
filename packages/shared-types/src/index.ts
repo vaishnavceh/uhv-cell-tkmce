@@ -132,6 +132,14 @@ export interface SplitCollaborator {
   logoUrl?: string;
 }
 
+export interface BankDetails {
+  bankName?: string;
+  accountHolder?: string;
+  accountNumber?: string;
+  ifscCode?: string;
+  branch?: string;
+}
+
 // Event
 export interface EventItem {
   id: string;
@@ -150,6 +158,10 @@ export interface EventItem {
   splitCollaborators?: SplitCollaborator[];
   isPaid?: boolean;
   ticketPrice?: number;
+  upiId?: string | null;
+  upiQrCode?: string | null;
+  bankDetails?: BankDetails | null;
+  paymentInstructions?: string | null;
   coordinatorName?: string | null;
   coordinatorPhone?: string | null;
   coordinators?: EventCoordinator[];
@@ -195,6 +207,7 @@ export interface EventRegistration {
   institution?: string | null;
   designation?: string | null;
   uploadReference?: string | null;
+  paymentReference?: string | null;
   ticketType?: 'INDIVIDUAL' | 'GROUP' | string;
   groupSize?: number;
   groupName?: string | null;

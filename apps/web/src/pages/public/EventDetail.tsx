@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../../api/client';
 import { EventItem, RegistrationFieldDefinition } from '@uhv/shared-types';
 import { usePageTitle } from '../../hooks/usePageTitle';
-import { Calendar, Clock, MapPin, ArrowLeft, ExternalLink, ShieldCheck, Share2, Hourglass, Download, Building2, Users, Phone, Mail, Bell } from 'lucide-react';
+import { Calendar, Clock, MapPin, ArrowLeft, ExternalLink, ShieldCheck, Share2, Hourglass, Download, Building2, Users, Phone, Mail, Bell, Copy, Check, QrCode, CreditCard } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { formatDate } from '../../utils/cn';
 import { Button } from '../../components/ui/Button';
@@ -426,6 +426,10 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
   const [groupName, setGroupName] = React.useState('');
   const [groupSize, setGroupSize] = React.useState(2);
   const [groupMembers, setGroupMembers] = React.useState<string[]>(['']);
+  const [paymentReference, setPaymentReference] = React.useState('');
+  const [copiedUpi, setCopiedUpi] = React.useState(false);
+  const [copiedAcc, setCopiedAcc] = React.useState(false);
+  const [copiedIfsc, setCopiedIfsc] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [successData, setSuccessData] = React.useState<any>(null);
   const [isDownloadingPng, setIsDownloadingPng] = React.useState(false);
@@ -542,10 +546,20 @@ const EventRegistrationForm: React.FC<{ event: EventItem }> = ({ event }) => {
 
     const calculatedTotal = event.isPaid ? ((Number(event.ticketPrice) || 0) * requestedSeats) : 0;
 
+    if (event.isPaid) {
+      if (!paymentReference.trim() && !formData.uploadReference.trim()) {
+        alert('Please enter your UPI Reference ID / UTR Number or Transaction ID after making the payment.');
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     try {
+      const finalPaymentRef = paymentReference.trim() || formData.uploadReference.trim() || undefined;
       const payload = {
         ...formData,
+        paymentReference: finalPaymentRef,
+        uploadReference: finalPaymentRef || formData.uploadReference || undefined,
         ticketType,
         groupSize: requestedSeats,
         groupName: ticketType === 'GROUP' ? groupName.trim() : undefined,
@@ -696,14 +710,6 @@ Universal Human Values Cell • TKM College of Engineering, Kollam`;
             >
               🖨️ Print Pass / Save PDF
             </Button>
-            <a
-              href={gmailUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-md bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-sm transition"
-            >
-              <Mail className="w-4 h-4" /> 📧 Open Confirmation in Gmail
-            </a>
             <Button
               variant="outline"
               onClick={() => {
@@ -716,6 +722,7 @@ Universal Human Values Cell • TKM College of Engineering, Kollam`;
                   designation: '',
                   uploadReference: '',
                 });
+                setPaymentReference('');
                 setCustomData({});
                 setTicketType('INDIVIDUAL');
                 setGroupName('');
@@ -734,7 +741,7 @@ Universal Human Values Cell • TKM College of Engineering, Kollam`;
           <div
             id="uhv-event-ticket"
             ref={ticketRef}
-            className="relative w-full max-w-4xl min-w-[680px] mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-[#090d16] text-white flex flex-row select-none"
+            className="relative w-full max-w-5xl min-w-[700px] mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-[#090d16] text-white flex flex-row select-none"
           >
             {/* Main Left Ticket Section */}
             <div className="flex-1 p-6 sm:p-8 flex flex-col justify-between relative overflow-hidden bg-gradient-to-br from-[#0c1322] via-[#090d16] to-[#05070c]">
@@ -743,90 +750,110 @@ Universal Human Values Cell • TKM College of Engineering, Kollam`;
               <div className="absolute -left-6 -bottom-6 w-36 h-36 rounded-full border border-slate-700/20 pointer-events-none" />
               <div className="absolute -left-0 -bottom-0 w-24 h-24 rounded-full border border-slate-700/20 pointer-events-none" />
 
-              {/* Event Cover Image Backdrop Watermark (if present) */}
+              {/* Event Cover Image Backdrop Watermark (clean subtle opacity) */}
               {event.coverImage && (
                 <div
-                  className="absolute inset-0 bg-cover bg-center opacity-10 pointer-events-none mix-blend-luminosity filter blur-[1px]"
+                  className="absolute inset-0 bg-cover bg-center opacity-[0.06] pointer-events-none mix-blend-luminosity filter blur-[1px]"
                   style={{ backgroundImage: `url(${event.coverImage})` }}
                 />
               )}
 
               <div>
-                {/* Co-Branded Header: UHV Cell Logo + Collaborator Logo */}
-                <div className="flex items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-800/80">
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2 shrink-0">
-                      <div className="w-9 h-9 rounded-full bg-white p-0.5 flex items-center justify-center shadow-sm">
-                        <img
-                          src={tkmLogoBase64 || '/assets/tkm-logo.png'}
-                          alt="TKMCE Seal"
-                          className="w-full h-full object-contain"
-                        />
+                {/* Extended Co-Branded Header Bar */}
+                <div className="space-y-3.5 mb-5 pb-4 border-b border-slate-800/80">
+                  <div className="flex items-center justify-between gap-4">
+                    {/* Primary Institutional Branding */}
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 shrink-0">
+                        <div className="w-10 h-10 rounded-xl bg-white p-1 flex items-center justify-center shadow-md border border-slate-200/20 shrink-0">
+                          <img
+                            src={tkmLogoBase64 || '/assets/tkm-logo.png'}
+                            alt="TKMCE Seal"
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+                        <div className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-700/80 p-1 flex items-center justify-center shadow-md shrink-0">
+                          <img
+                            src={uhvLogoBase64 || '/assets/uhv_logo_white.png'}
+                            alt="UHV Cell Logo"
+                            className="w-full h-full object-contain drop-shadow-md"
+                          />
+                        </div>
                       </div>
-                      <img
-                        src={uhvLogoBase64 || '/assets/uhv_logo_white.png'}
-                        alt="UHV Cell Logo"
-                        className="w-9 h-9 object-contain drop-shadow-md"
-                      />
+                      <div className="border-l border-slate-700/80 pl-3">
+                        <span className="text-xs sm:text-sm uppercase font-black tracking-widest text-emerald-400 block leading-tight">
+                          UNIVERSAL HUMAN VALUES CELL
+                        </span>
+                        <span className="text-[10px] uppercase font-bold text-slate-300 block tracking-wide mt-0.5">
+                          TKM College of Engineering, Kollam (Autonomous)
+                        </span>
+                      </div>
                     </div>
-                    <div>
-                      <span className="text-[11px] sm:text-xs uppercase font-black tracking-widest text-emerald-400 block">
-                        UNIVERSAL HUMAN VALUES CELL
-                      </span>
-                      <span className="text-[9px] uppercase font-bold text-slate-300 block">
-                        TKM College of Engineering • AICTE Cell
+
+                    {/* Entry Pass Type Capsule */}
+                    <div className="shrink-0">
+                      <span className="text-[10px] font-extrabold uppercase px-3 py-1.5 rounded-lg bg-emerald-950/90 border border-emerald-500/50 text-emerald-300 tracking-wider shadow-sm">
+                        {isGroup ? `Group Pass (${successData.groupSize})` : 'Entry Pass'}
                       </span>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
-                    {event.splitCollaborators && event.splitCollaborators.length > 0 ? (
-                      <div className="flex items-center gap-2 bg-slate-800/90 px-3 py-1.5 rounded-lg border border-slate-700 shadow-sm">
-                        <div className="flex items-center -space-x-1">
-                          {event.splitCollaborators.map((c) =>
-                            c.logoUrl ? (
-                              <div key={c.id} className="bg-white rounded p-0.5 shadow-2xs shrink-0 flex items-center justify-center">
+                  {/* Extended Collaborator Section (if present) */}
+                  {((event.splitCollaborators && event.splitCollaborators.length > 0) || event.collaborators) && (
+                    <div className="flex flex-wrap items-center gap-2.5 pt-1">
+                      <span className="text-[9px] uppercase font-extrabold tracking-wider text-slate-400 mr-1 flex items-center gap-1 shrink-0">
+                        🤝 In Collaboration With:
+                      </span>
+                      {event.splitCollaborators && event.splitCollaborators.length > 0 ? (
+                        event.splitCollaborators.map((c) => (
+                          <div
+                            key={c.id}
+                            className="inline-flex items-center gap-2.5 bg-slate-900/95 hover:bg-slate-800/95 px-3 py-1.5 rounded-xl border border-slate-700 shadow-sm transition"
+                          >
+                            {c.logoUrl ? (
+                              <div className="h-7 max-w-[90px] bg-white rounded-md p-1 flex items-center justify-center shrink-0 shadow-2xs">
                                 <img
                                   src={c.logoUrl}
                                   alt={c.name}
-                                  className="h-6 max-w-[65px] object-contain rounded"
+                                  className="h-full w-auto max-w-[80px] object-contain"
+                                  crossOrigin="anonymous"
                                   onError={(e) => {
                                     (e.currentTarget.parentElement as HTMLElement).style.display = 'none';
                                   }}
                                 />
                               </div>
-                            ) : null
-                          )}
-                        </div>
-                        <span className="text-[9px] font-bold text-slate-200 truncate max-w-[130px]">
-                          🤝 {event.splitCollaborators.map((c) => c.name).join(', ')}
-                        </span>
-                      </div>
-                    ) : event.collaborators ? (
-                      <div className="flex items-center gap-2 bg-slate-800/90 px-3 py-1.5 rounded-lg border border-slate-700 shadow-sm">
-                        {event.collaboratorLogo ? (
-                          <div className="bg-white rounded p-0.5 shadow-2xs shrink-0 flex items-center justify-center">
-                            <img
-                              src={collaboratorLogoBase64 || event.collaboratorLogo}
-                              alt="Collaborator Logo"
-                              className="h-6 max-w-[80px] object-contain rounded"
-                              onError={(e) => {
-                                (e.currentTarget.parentElement as HTMLElement).style.display = 'none';
-                              }}
-                            />
+                            ) : (
+                              <Building2 className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                            )}
+                            <span className="text-xs font-bold text-slate-200">
+                              {c.name}
+                            </span>
                           </div>
-                        ) : (
-                          <Building2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                        )}
-                        <span className="text-[9px] font-bold text-slate-200 truncate max-w-[130px]">
-                          🤝 {event.collaborators}
-                        </span>
-                      </div>
-                    ) : null}
-                    <span className="text-[9px] font-extrabold uppercase px-2.5 py-1 rounded bg-emerald-950/90 border border-emerald-500/40 text-emerald-300">
-                      {isGroup ? `Group Pass (${successData.groupSize})` : 'Entry Pass'}
-                    </span>
-                  </div>
+                        ))
+                      ) : (
+                        <div className="inline-flex items-center gap-2.5 bg-slate-900/95 px-3 py-1.5 rounded-xl border border-slate-700 shadow-sm">
+                          {event.collaboratorLogo ? (
+                            <div className="h-7 max-w-[90px] bg-white rounded-md p-1 flex items-center justify-center shrink-0 shadow-2xs">
+                              <img
+                                src={collaboratorLogoBase64 || event.collaboratorLogo}
+                                alt="Collaborator Logo"
+                                className="h-full w-auto max-w-[80px] object-contain"
+                                crossOrigin="anonymous"
+                                onError={(e) => {
+                                  (e.currentTarget.parentElement as HTMLElement).style.display = 'none';
+                                }}
+                              />
+                            </div>
+                          ) : (
+                            <Building2 className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                          )}
+                          <span className="text-xs font-bold text-slate-200">
+                            {event.collaborators}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Event Title in Bold Concert Headline */}
@@ -871,6 +898,14 @@ Universal Human Values Cell • TKM College of Engineering, Kollam`;
                     <div>
                       <span className="text-[9px] uppercase font-bold text-blue-400 block tracking-wider">Team / Group</span>
                       <span className="text-xs font-black text-blue-200 truncate block">{successData.groupName}</span>
+                    </div>
+                  )}
+                  {(successData.paymentReference || successData.uploadReference) && (
+                    <div>
+                      <span className="text-[9px] uppercase font-bold text-emerald-400 block tracking-wider">Payment Ref / UTR</span>
+                      <span className="text-xs font-mono font-bold text-emerald-200 truncate block">
+                        {successData.paymentReference || successData.uploadReference}
+                      </span>
                     </div>
                   )}
                   {/* Dynamically render custom field answers on ticket */}
@@ -928,6 +963,11 @@ Universal Human Values Cell • TKM College of Engineering, Kollam`;
                 <div className="my-1.5 py-1 px-2 rounded bg-slate-900 border border-slate-800 text-[10px] font-bold text-emerald-300">
                   {totalFeeText}
                 </div>
+                {(successData.paymentReference || successData.uploadReference) && (
+                  <span className="text-[8px] font-mono font-semibold text-emerald-400/90 block truncate max-w-[155px] mx-auto mb-1">
+                    Ref: {successData.paymentReference || successData.uploadReference}
+                  </span>
+                )}
                 {((event.coordinators && event.coordinators.length > 0) || event.coordinatorName) && (
                   <span className="text-[8px] font-medium text-slate-400 block truncate max-w-[155px] mx-auto mt-0.5">
                     Enquiries: {event.coordinators?.[0]?.name || event.coordinatorName}{' '}
@@ -1276,6 +1316,190 @@ Universal Human Values Cell • TKM College of Engineering, Kollam`;
                 onChange={(e) => setFormData({ ...formData, uploadReference: e.target.value })}
                 placeholder="What did you name your uploaded file?"
               />
+            </div>
+          )}
+
+          {/* Paid Event Payment & Transfer Details Card */}
+          {event.isPaid && (
+            <div className="sm:col-span-2 p-5 rounded-2xl bg-gradient-to-br from-emerald-950 via-slate-900 to-slate-950 text-white border border-emerald-500/40 shadow-xl space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="w-5 h-5 text-emerald-400" />
+                    <h4 className="text-sm font-bold uppercase tracking-wider text-white">
+                      Payment &amp; Transfer Details
+                    </h4>
+                  </div>
+                  <p className="text-xs text-slate-300 mt-0.5">
+                    Pay via Google Pay, UPI QR, or Direct Bank Transfer to confirm your registration.
+                  </p>
+                </div>
+                <div className="bg-emerald-900/80 px-3.5 py-1.5 rounded-xl border border-emerald-500/40 text-right shrink-0">
+                  <span className="text-[10px] text-emerald-300 uppercase font-extrabold block">
+                    Total Amount Due
+                  </span>
+                  <span className="text-base font-black text-emerald-200">
+                    ₹{currentTotalFee} {ticketType === 'GROUP' ? `(${groupSize} Attendees)` : ''}
+                  </span>
+                </div>
+              </div>
+
+              {/* UPI & Google Pay Methods */}
+              {(event.upiQrCode || event.upiId) && (
+                <div className="p-4 bg-slate-900/90 rounded-xl border border-slate-800 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <QrCode className="w-4 h-4 text-emerald-400" />
+                    <span className="text-xs font-bold text-white uppercase tracking-wider">
+                      Google Pay / PhonePe / Any UPI App
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row items-center gap-5">
+                    {event.upiQrCode && (
+                      <div className="bg-white p-2.5 rounded-xl shadow-md border border-slate-200 shrink-0 text-center">
+                        <img
+                          src={event.upiQrCode}
+                          alt="UPI QR Code"
+                          className="w-32 h-32 sm:w-36 sm:h-36 object-contain rounded"
+                          onError={(e) => ((e.currentTarget.parentElement as HTMLElement).style.display = 'none')}
+                        />
+                        <span className="text-[9px] font-bold text-slate-600 block mt-1">
+                          Scan to Pay ₹{currentTotalFee}
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="space-y-3 flex-1 w-full">
+                      {event.upiId && (
+                        <div className="space-y-1">
+                          <span className="text-[11px] text-slate-400 font-semibold block">Official UPI ID / VPA:</span>
+                          <div className="flex items-center gap-2 bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                            <span className="font-mono text-sm font-bold text-emerald-300 truncate select-all flex-1">
+                              {event.upiId}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(event.upiId || '');
+                                setCopiedUpi(true);
+                                setTimeout(() => setCopiedUpi(false), 2000);
+                              }}
+                              className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 flex items-center gap-1 transition"
+                            >
+                              {copiedUpi ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                              {copiedUpi ? 'Copied' : 'Copy'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {event.upiId && (
+                        <a
+                          href={`upi://pay?pa=${encodeURIComponent(event.upiId)}&pn=${encodeURIComponent(event.title)}&am=${currentTotalFee}&cu=INR`}
+                          className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-sm"
+                        >
+                          📱 Pay via Any UPI Mobile App
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Bank Account Transfer Details */}
+              {event.bankDetails && ((event.bankDetails as any).accountNumber || (event.bankDetails as any).bankName) && (
+                <div className="p-4 bg-slate-900/90 rounded-xl border border-slate-800 space-y-2.5">
+                  <span className="text-xs font-bold text-white uppercase tracking-wider block">
+                    Direct Bank Transfer (NEFT / RTGS / IMPS)
+                  </span>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                    {(event.bankDetails as any).accountHolder && (
+                      <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                        <span className="text-[10px] text-slate-400 block uppercase font-bold">Account Holder Name</span>
+                        <span className="font-bold text-slate-100 block">{(event.bankDetails as any).accountHolder}</span>
+                      </div>
+                    )}
+                    {(event.bankDetails as any).accountNumber && (
+                      <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800 flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] text-slate-400 block uppercase font-bold">Account Number</span>
+                          <span className="font-mono font-bold text-emerald-300 block">{(event.bankDetails as any).accountNumber}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText((event.bankDetails as any).accountNumber || '');
+                            setCopiedAcc(true);
+                            setTimeout(() => setCopiedAcc(false), 2000);
+                          }}
+                          className="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200"
+                          title="Copy Account Number"
+                        >
+                          {copiedAcc ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+                    )}
+                    {(event.bankDetails as any).ifscCode && (
+                      <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800 flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] text-slate-400 block uppercase font-bold">IFSC Code</span>
+                          <span className="font-mono font-bold text-emerald-300 block">{(event.bankDetails as any).ifscCode}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText((event.bankDetails as any).ifscCode || '');
+                            setCopiedIfsc(true);
+                            setTimeout(() => setCopiedIfsc(false), 2000);
+                          }}
+                          className="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200"
+                          title="Copy IFSC Code"
+                        >
+                          {copiedIfsc ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+                    )}
+                    {(event.bankDetails as any).bankName && (
+                      <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                        <span className="text-[10px] text-slate-400 block uppercase font-bold">Bank &amp; Branch</span>
+                        <span className="font-bold text-slate-100 block">
+                          {(event.bankDetails as any).bankName}
+                          {(event.bankDetails as any).branch ? ` • ${(event.bankDetails as any).branch}` : ''}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Payment Instructions if present */}
+              {event.paymentInstructions && (
+                <div className="p-3 bg-emerald-950/70 border border-emerald-500/40 rounded-xl text-xs text-emerald-200 space-y-1">
+                  <span className="font-bold uppercase tracking-wider text-emerald-300 text-[10px] block">
+                    Payment Guidelines:
+                  </span>
+                  <p className="whitespace-pre-wrap">{event.paymentInstructions}</p>
+                </div>
+              )}
+
+              {/* Payment Reference ID / UTR Input */}
+              <div className="p-3.5 bg-slate-950 rounded-xl border border-emerald-500/40 space-y-1.5">
+                <label className="text-xs font-bold text-white block">
+                  UPI Reference ID / UTR / Transaction Number *
+                </label>
+                <input
+                  type="text"
+                  required={event.isPaid}
+                  value={paymentReference}
+                  onChange={(e) => setPaymentReference(e.target.value)}
+                  placeholder="e.g. 423871928374 or IMPS reference number"
+                  className="w-full text-sm font-mono rounded-lg border border-slate-700 bg-slate-900 p-2.5 text-white placeholder-slate-500 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                />
+                <p className="text-[11px] text-slate-400">
+                  Enter the 12-digit transaction ID / UTR from your UPI or banking app after making the payment.
+                </p>
+              </div>
             </div>
           )}
 

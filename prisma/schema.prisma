@@ -132,6 +132,10 @@ model Event {
   splitCollaborators    Json                @default("[]")
   isPaid                Boolean             @default(false)
   ticketPrice           Float               @default(0)
+  upiId                 String?
+  upiQrCode             String?
+  bankDetails           Json                @default("{}")
+  paymentInstructions   String?
   coordinatorName       String?
   coordinatorPhone      String?
   coordinators          Json                @default("[]")
@@ -168,6 +172,7 @@ model EventRegistration {
   institution     String?
   designation     String?
   uploadReference String?
+  paymentReference String?
   ticketType      String             @default("INDIVIDUAL")
   groupSize       Int                @default(1)
   groupName       String?
